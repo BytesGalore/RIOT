@@ -19,9 +19,6 @@ typedef int pthread_once_t;
 /* Single execution handling.  */
 #define PTHREAD_ONCE_INIT 0
 
-typedef unsigned long int pthread_cond_t;
-typedef unsigned long int pthread_condattr_t;
-
 typedef mutex_t pthread_mutex_t;
 typedef unsigned long int pthread_mutexattr_t;
 

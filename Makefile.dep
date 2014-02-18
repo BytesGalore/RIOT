@@ -109,6 +109,12 @@ ifneq (,$(filter at86rf231,$(USEMODULE)))
 	endif
 endif
 
+ifneq (,$(filter condition_variable,$(USEMODULE)))
+	ifeq (,$(filter vtimer,$(USEMODULE)))
+		USEMODULE += vtimer
+	endif
+endif
+
 ifneq (,$(filter vtimer,$(USEMODULE)))
 	ifeq (,$(filter timex,$(USEMODULE)))
 		USEMODULE += timex

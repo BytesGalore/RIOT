@@ -1,4 +1,4 @@
-# name of your project
+# name of your application
 export PROJECT = ccn-lite-client
 
 # If no BOARD is found in the environment, use this default:
@@ -36,7 +36,7 @@ USEMODULE += posix
 USEMODULE += ps
 USEMODULE += auto_init
 USEMODULE += hwtimer
-
+USEMODULE += random
 USEMODULE += transceiver
 ifeq ($(BOARD),msba2)
 	USEMODULE += cc110x_ng

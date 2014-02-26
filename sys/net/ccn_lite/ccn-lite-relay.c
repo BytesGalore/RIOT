@@ -136,6 +136,12 @@ void ccnl_retransmit(void *relay, void *aux)
     ccnl_set_timer(TIMEOUT_TO_US(CCNL_CHECK_RETRANSMIT_SEC, CCNL_CHECK_RETRANSMIT_USEC), ccnl_retransmit, relay, 0);
 }
 
+void ccnl_nonce_timeout(void *relay, void *aux)
+{
+    ccnl_do_nonce_timeout(relay, aux);
+    ccnl_set_timer(TIMEOUT_TO_US(CCNL_NONCE_TIMEOUT_SEC, CCNL_NONCE_TIMEOUT_USEC), ccnl_nonce_timeout, relay, 0);
+}
+
 // ----------------------------------------------------------------------
 
 void ccnl_relay_config(struct ccnl_relay_s *relay, int max_cache_entries, int fib_threshold_prefix, int fib_threshold_aggregate)
@@ -205,6 +211,7 @@ void ccnl_relay_config(struct ccnl_relay_s *relay, int max_cache_entries, int fi
 
     ccnl_set_timer(TIMEOUT_TO_US(CCNL_CHECK_TIMEOUT_SEC, CCNL_CHECK_TIMEOUT_USEC), ccnl_ageing, relay, 0);
     ccnl_set_timer(TIMEOUT_TO_US(CCNL_CHECK_RETRANSMIT_SEC, CCNL_CHECK_RETRANSMIT_USEC), ccnl_retransmit, relay, 0);
+    ccnl_set_timer(TIMEOUT_TO_US(CCNL_NONCE_TIMEOUT_SEC, CCNL_NONCE_TIMEOUT_USEC), ccnl_nonce_timeout, relay, 0);
 }
 
 #if RIOT_CCNL_POPULATE
@@ -242,8 +249,12 @@ void ccnl_populate_cache(struct ccnl_relay_s *ccnl, unsigned char *buf, int data
             goto Done;
         }
 
-        ccnl_content_add2cache(ccnl, c);
         c->flags |= CCNL_CONTENT_FLAGS_STATIC;
+        if (!ccnl_content_add2cache(ccnl, c)) {
+            // content store error
+            free_content(c);
+        }
+
     Done:
         free_prefix(prefix);
         ccnl_free(pkt);
@@ -333,7 +344,8 @@ int ccnl_io_loop(struct ccnl_relay_s *ccnl)
         hwtimer_id = hwtimer_set(HWTIMER_TICKS(us), ccnl_timeout_callback, ccnl);
         if (hwtimer_id == -1) {
             puts("NO MORE TIMERS!");
-        } else {
+        }
+        else {
             //DEBUGMSG(1, "hwtimer_id is %d\n", hwtimer_id);
         }
         msg_receive(&in);

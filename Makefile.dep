@@ -94,6 +94,12 @@ ifneq (,$(filter sixlowpan,$(USEMODULE)))
 	endif
 endif
 
+ifneq (,$(filter condition_variable,$(USEMODULE)))
+	ifeq (,$(filter vtimer,$(USEMODULE)))
+		USEMODULE += vtimer
+	endif
+endif
+
 ifneq (,$(filter vtimer,$(USEMODULE)))
 	ifeq (,$(filter hwtimer,$(USEMODULE)))
 		USEMODULE += hwtimer

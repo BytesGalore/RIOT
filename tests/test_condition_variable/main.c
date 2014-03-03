@@ -69,7 +69,7 @@ int main(void)
         if (count == expected_value)
         {
             puts("condition fulfilled.");
-             mutex_unlock(&mutex);
+            mutex_unlock(&mutex);
             return 0;
         }
 

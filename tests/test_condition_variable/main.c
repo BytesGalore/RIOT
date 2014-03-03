@@ -19,7 +19,7 @@
  */
 
 #include <stdio.h>
-#include "condition_variable.h"
+#include "pthread_cond.h"
 #include "thread.h"
 #include "mutex.h"
 

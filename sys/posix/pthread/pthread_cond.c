@@ -102,30 +102,30 @@ int pthread_cond_wait(struct pthread_cond_t *cond, struct mutex_t *mutex)
     n.data = 0;
     n.next = NULL;
 
-    while (1) {
-        if (cond->val != 0) {
-            cond->val = 0;
-            if (n.priority != 0 && n.data != 0) {
-                queue_remove(&(cond->queue), &n);
-            }
-            return 0;
+    if (cond->val != 0) {
+        cond->val = 0;
+        if (n.priority != 0 && n.data != 0) {
+            queue_remove(&(cond->queue), &n);
         }
-        else {
-            if (n.priority == 0 && n.data == 0) {
-                n.priority = (unsigned int) active_thread->priority;
-                n.data = (unsigned int) active_thread->pid;
-                n.next = NULL;
-                // potential starving
-                queue_priority_add(&(cond->queue), &n);
-            }
-            else if (n.priority != (unsigned int) active_thread->priority) {
-                queue_remove(&(cond->queue), &n);
-                n.priority = (unsigned int) active_thread->priority;
-                queue_priority_add(&(cond->queue), &n);
-            }
+        
+        mutex_lock(mutex);
+        return 0;
+    }
+    else {
+        if (n.priority == 0 && n.data == 0) {
+            n.priority = (unsigned int) active_thread->priority;
+            n.data = (unsigned int) active_thread->pid;
+            n.next = NULL;
+            // potential starving
+            queue_priority_add(&(cond->queue), &n);
+        }
+        else if (n.priority != (unsigned int) active_thread->priority) {
+            queue_remove(&(cond->queue), &n);
+            n.priority = (unsigned int) active_thread->priority;
+            queue_priority_add(&(cond->queue), &n);
+        }
 
-            mutex_unlock_and_sleep(mutex);
-        }
+        mutex_unlock_and_sleep(mutex);
     }
 
     // no way to arrive here
@@ -141,44 +141,42 @@ int pthread_cond_timedwait(struct pthread_cond_t *cond, struct mutex_t *mutex, c
 
     unsigned char is_sleeping = 0;
 
-    while (1) {
-        if (cond->val != 0) {
-            cond->val = 0;
-            if (n.priority == 0 && n.data == 0) {
+    if (cond->val != 0) {
+        cond->val = 0;
+        if (n.priority == 0 && n.data == 0) {
+            queue_remove(&(cond->queue), &n);
+        }
+
+        mutex_lock(mutex);
+        return 0;
+    }
+    else {
+        if (is_sleeping != 0) {
+            //return ETIMEDOUT;
+            if (n.priority != 0 && n.data != 0) {
                 queue_remove(&(cond->queue), &n);
             }
 
             mutex_lock(mutex);
-            return 0;
+            return -2;
         }
-        else {
-            if (is_sleeping != 0) {
-                //return ETIMEDOUT;
-                if (n.priority != 0 && n.data != 0) {
-                    queue_remove(&(cond->queue), &n);
-                }
 
-                mutex_lock(mutex);
-                return -2;
-            }
-
-            if (n.priority == 0 && n.data == 0) {
-                n.priority = (unsigned int) active_thread->priority;
-                n.data = (unsigned int) active_thread->pid;
-                n.next = NULL;
-                // potential starving
-                queue_priority_add(&(cond->queue), &n);
-            }
-            else if (n.priority != (unsigned int) active_thread->priority) {
-                queue_remove(&(cond->queue), &n);
-                n.priority = (unsigned int) active_thread->priority;
-                queue_priority_add(&(cond->queue), &n);
-            }
-
-            is_sleeping = 1;
-            vtimer_set_wakeup(&timer, (*(timex_t *)(abstime)), active_thread->pid);
-            mutex_unlock_and_sleep(mutex);
+        if (n.priority == 0 && n.data == 0) {
+            n.priority = (unsigned int) active_thread->priority;
+            n.data = (unsigned int) active_thread->pid;
+            n.next = NULL;
+            // potential starving
+            queue_priority_add(&(cond->queue), &n);
         }
+        else if (n.priority != (unsigned int) active_thread->priority) {
+            queue_remove(&(cond->queue), &n);
+            n.priority = (unsigned int) active_thread->priority;
+            queue_priority_add(&(cond->queue), &n);
+        }
+
+        is_sleeping = 1;
+        vtimer_set_wakeup(&timer, (*(timex_t *)(abstime)), active_thread->pid);
+        mutex_unlock_and_sleep(mutex);
     }
 
     // no way to arrive here

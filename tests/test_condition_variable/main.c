@@ -26,17 +26,17 @@
 static mutex_t mutex;
 static struct pthread_cond_t cv;
 static volatile int count;
+static volatile int expected_value;
 static char stack[KERNEL_CONF_STACKSIZE_MAIN];
 
 /**
  * @brief   This thread tries to lock the mutex to enter the critical section.
- *          Then it sets cv true (==1), signals one waiting thread to check cv state and sleep
+ *          Then it signals one waiting thread to check the condition and it goes to sleep again
  */
 static void second_thread(void)
 {
     while (1) {
         mutex_lock(&mutex);
-        cv.val = 1;
         pthread_cond_signal(&cv);
         thread_sleep();
         mutex_unlock(&mutex);
@@ -46,6 +46,7 @@ static void second_thread(void)
 int main(void)
 {
     count = 0;
+    expected_value = 500*1000;
     mutex_init(&mutex);
     pthread_cond_init(&cv, NULL);
 
@@ -65,8 +66,14 @@ int main(void)
             printf("Still alive alternated [count: %dk] times.\n", count / 1000);
         }
 
+        if (count == expected_value)
+        {
+            puts("condition fulfilled.");
+             mutex_unlock(&mutex);
+            return 0;
+        }
+
         pthread_cond_wait(&cv, &mutex);
-        cv.val = 0;
         mutex_unlock(&mutex);
     }
 }

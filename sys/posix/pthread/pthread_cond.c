@@ -104,11 +104,10 @@ int pthread_cond_wait(struct pthread_cond_t *cond, struct mutex_t *mutex)
 
     while (1) {
         if (cond->val != 0) {
+            cond->val = 0;
             if (n.priority != 0 && n.data != 0) {
                 queue_remove(&(cond->queue), &n);
             }
-
-            mutex_unlock(mutex);
             return 0;
         }
         else {
@@ -144,11 +143,12 @@ int pthread_cond_timedwait(struct pthread_cond_t *cond, struct mutex_t *mutex, c
 
     while (1) {
         if (cond->val != 0) {
+            cond->val = 0;
             if (n.priority == 0 && n.data == 0) {
                 queue_remove(&(cond->queue), &n);
             }
 
-            mutex_unlock(mutex);
+            mutex_lock(mutex);
             return 0;
         }
         else {
@@ -158,7 +158,7 @@ int pthread_cond_timedwait(struct pthread_cond_t *cond, struct mutex_t *mutex, c
                     queue_remove(&(cond->queue), &n);
                 }
 
-                mutex_unlock(mutex);
+                mutex_lock(mutex);
                 return -2;
             }
 
@@ -188,18 +188,19 @@ int pthread_cond_timedwait(struct pthread_cond_t *cond, struct mutex_t *mutex, c
 int pthread_cond_signal(struct pthread_cond_t *cond)
 {
     queue_node_t *root = &(cond->queue);
+    cond->val = 1;
 
     if (root->next != NULL) {
         root = root->next;
         thread_wakeup((int)root->data);
     }
-
     return 0;
 }
 
 int pthread_cond_broadcast(struct pthread_cond_t *cond)
 {
     queue_node_t *root = &(cond->queue);
+    cond->val = 1;
 
     while (root->next != NULL) {
         root = root->next;

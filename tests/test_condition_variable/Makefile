@@ -3,6 +3,7 @@ include ../Makefile.tests_common
 
 USEMODULE += posix
 USEMODULE += pthread
+USEMODULE += vtimer
 
 ifeq ($(BOARD),native)
     CFLAGS += -isystem $(RIOTBASE)/sys/posix/pthread/include

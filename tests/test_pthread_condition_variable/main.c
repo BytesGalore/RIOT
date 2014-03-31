@@ -38,8 +38,7 @@ static void second_thread(void)
     while (1) {
         mutex_lock(&mutex);
         pthread_cond_signal(&cv);
-        thread_sleep();
-        mutex_unlock(&mutex);
+        mutex_unlock_and_sleep(&mutex);
     }
 }
 

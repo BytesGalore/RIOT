@@ -41,8 +41,7 @@ typedef struct {
 
 typedef struct pthread_cond_t {
     /* fields are managed by cv functions, don't touch */
-    unsigned int val;
-    queue_node_t queue;     // @internal
+    queue_node_t queue; /**< Threads currently waiting to be signaled. */
 } pthread_cond_t;
 
 /**

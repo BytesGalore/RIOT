@@ -24,20 +24,13 @@
 #include <time.h>
 #include "mutex.h"
 
+#if defined(CPU_CC430) || defined(CPU_MSP430X16X)
+#   include "msp430_types.h"
+#endif
+
 typedef struct pthread_condattr_t {
     int __dummy;
 } pthread_condattr_t;
-
-/* // real definition
-typedef struct {
-    struct _pthread_fastlock __c_lock;
-    _pthread_descr __c_waiting;
-    char __padding[48 - sizeof(struct _pthread_fastlock) -
-           sizeof(_pthread_descr) -
-           sizeof(__pthread_cond_align_t)];
-    __pthread_cond_align_t __align;
-} pthread_cond_t;
-*/
 
 typedef struct pthread_cond_t {
     /* fields are managed by cv functions, don't touch */

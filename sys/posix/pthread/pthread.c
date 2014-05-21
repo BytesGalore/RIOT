@@ -53,6 +53,12 @@ enum pthread_thread_status {
     PTS_ZOMBIE,
 };
 
+typedef struct st_tls_data_t {
+    struct st_tls_data_t *next;
+    unsigned int key;
+    void *value;
+} tls_data_t;
+
 typedef struct pthread_thread {
     int thread_pid;
 
@@ -63,6 +69,8 @@ typedef struct pthread_thread {
 
     void *(*start_routine)(void *);
     void *arg;
+
+    struct st_tls_data_t *tls;
 
     char *stack;
 
@@ -76,12 +84,54 @@ static volatile int pthread_reaper_pid = -1;
 
 static char pthread_reaper_stack[PTHREAD_REAPER_STACKSIZE];
 
+typedef struct st_thread_key_t {
+    struct st_thread_key_t *next;
+    unsigned int key;
+    void (*destructor)(void *);
+} thread_key_t;
+
+static thread_key_t *thread_keys;
+
+static void pthread_keys_exit(void *parameter)
+{
+    (void)parameter;
+    pthread_t self = pthread_self();
+    pthread_thread_t *pt = pthread_sched_threads[self - 1];
+
+    tls_data_t *tls = pt->tls;
+    tls_data_t *previous_tls = pt->tls;
+
+    while (tls != NULL) {
+        previous_tls = tls;
+        tls = tls->next;
+
+        thread_key_t *local_key = thread_keys;
+
+        while (local_key != NULL && local_key->key != previous_tls->key) {
+            local_key = local_key->next;
+        }
+
+        if (local_key != NULL) {
+            local_key->destructor((void *)local_key->key);
+        }
+
+        pthread_key_delete(previous_tls->key);
+    }
+
+}
+
 static void pthread_start_routine(void)
 {
     pthread_t self = pthread_self();
 
-    pthread_thread_t *pt = pthread_sched_threads[self-1];
-    void *retval = pt->start_routine(pt->arg);
+    pthread_thread_t *pt = pthread_sched_threads[self - 1];
+
+    void *retval;
+
+    pthread_cleanup_push(pthread_keys_exit, NULL);
+    retval = pt->start_routine(pt->arg);
+    pthread_cleanup_pop(1);
+
     pthread_exit(retval);
 }
 
@@ -89,13 +139,15 @@ static int insert(pthread_thread_t *pt)
 {
     int result = -1;
     mutex_lock(&pthread_mutex);
-    for (int i = 0; i < MAXTHREADS; i++){
+
+    for (int i = 0; i < MAXTHREADS; i++) {
         if (!pthread_sched_threads[i]) {
             pthread_sched_threads[i] = pt;
-            result = i+1;
+            result = i + 1;
             break;
         }
     }
+
     mutex_unlock(&pthread_mutex);
     return result;
 }
@@ -110,15 +162,18 @@ static void pthread_reaper(void)
     }
 }
 
-int pthread_create(pthread_t *newthread, const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg)
+
+int pthread_create(pthread_t *newthread, const pthread_attr_t *attr, void * (*start_routine)(void *), void *arg)
 {
     pthread_thread_t *pt = calloc(1, sizeof(pthread_thread_t));
 
     int pthread_pid = insert(pt);
+
     if (pthread_pid < 0) {
         free(pt);
         return -1;
     }
+
     *newthread = pthread_pid;
 
     pt->status = attr && attr->detached ? PTS_DETACHED : PTS_RUNNING;
@@ -132,6 +187,7 @@ int pthread_create(pthread_t *newthread, const pthread_attr_t *attr, void *(*sta
 
     if (autofree && pthread_reaper_pid < 0) {
         mutex_lock(&pthread_mutex);
+
         if (pthread_reaper_pid < 0) {
             /* volatile pid to overcome problems with double checking */
             volatile int pid = thread_create(pthread_reaper_stack,
@@ -142,6 +198,7 @@ int pthread_create(pthread_t *newthread, const pthread_attr_t *attr, void *(*sta
                                              "pthread-reaper");
             pthread_reaper_pid = pid;
         }
+
         mutex_unlock(&pthread_mutex);
     }
 
@@ -151,14 +208,15 @@ int pthread_create(pthread_t *newthread, const pthread_attr_t *attr, void *(*sta
                                    CREATE_WOUT_YIELD | CREATE_STACKTEST,
                                    pthread_start_routine,
                                    "pthread");
+
     if (pt->thread_pid < 0) {
         free(pt->stack);
         free(pt);
-        pthread_sched_threads[pthread_pid-1] = NULL;
+        pthread_sched_threads[pthread_pid - 1] = NULL;
         return -1;
     }
 
-    sched_switch(sched_active_thread->priority, PRIORITY_MAIN);
+    sched_switch (sched_active_thread->priority, PRIORITY_MAIN);
 
     return 0;
 }
@@ -171,7 +229,7 @@ void pthread_exit(void *retval)
         DEBUG("ERROR called pthread_self() returned 0 in \"%s\"!\n", __func__);
     }
     else {
-        pthread_thread_t *self = pthread_sched_threads[self_id-1];
+        pthread_thread_t *self = pthread_sched_threads[self_id - 1];
 
         while (self->cleanup_top) {
             __pthread_cleanup_datum_t *ct = self->cleanup_top;
@@ -182,6 +240,7 @@ void pthread_exit(void *retval)
 
         self->thread_pid = -1;
         DEBUG("pthread_exit(%p), self == %p\n", retval, (void *) self);
+
         if (self->status != PTS_DETACHED) {
             self->returnval = retval;
             self->status = PTS_ZOMBIE;
@@ -193,6 +252,7 @@ void pthread_exit(void *retval)
         }
 
         dINT();
+
         if (self->stack) {
             msg_t m;
             m.content.ptr = self->stack;
@@ -210,7 +270,8 @@ int pthread_join(pthread_t th, void **thread_return)
         return -3;
     }
 
-    pthread_thread_t *other = pthread_sched_threads[th-1];
+    pthread_thread_t *other = pthread_sched_threads[th - 1];
+
     if (!other) {
         return -1;
     }
@@ -222,13 +283,15 @@ int pthread_join(pthread_t th, void **thread_return)
             thread_sleep();
             /* no break */
         case (PTS_ZOMBIE):
+
             if (thread_return) {
                 *thread_return = other->returnval;
             }
+
             free(other);
             /* we only need to free the pthread layer struct,
             native thread stack is freed by other */
-            pthread_sched_threads[th-1] = NULL;
+            pthread_sched_threads[th - 1] = NULL;
             return 0;
         case (PTS_DETACHED):
             return -1;
@@ -244,7 +307,8 @@ int pthread_detach(pthread_t th)
         return -2;
     }
 
-    pthread_thread_t *other = pthread_sched_threads[th-1];
+    pthread_thread_t *other = pthread_sched_threads[th - 1];
+
     if (!other) {
         return -1;
     }
@@ -253,8 +317,9 @@ int pthread_detach(pthread_t th)
         free(other);
         /* we only need to free the pthread layer struct,
         native thread stack is freed by other */
-        pthread_sched_threads[th-1] = NULL;
-    } else {
+        pthread_sched_threads[th - 1] = NULL;
+    }
+    else {
         other->status = PTS_DETACHED;
     }
 
@@ -266,19 +331,22 @@ pthread_t pthread_self(void)
     pthread_t result = 0;
     mutex_lock(&pthread_mutex);
     int pid = sched_active_pid; /* sched_active_pid is volatile */
+
     for (int i = 0; i < MAXTHREADS; i++) {
         if (pthread_sched_threads[i] && pthread_sched_threads[i]->thread_pid == pid) {
-            result = i+1;
+            result = i + 1;
             break;
         }
     }
+
     mutex_unlock(&pthread_mutex);
     return result;
 }
 
 int pthread_cancel(pthread_t th)
 {
-    pthread_thread_t *other = pthread_sched_threads[th-1];
+    pthread_thread_t *other = pthread_sched_threads[th - 1];
+
     if (!other) {
         return -1;
     }
@@ -311,7 +379,7 @@ void pthread_testcancel(void)
         return;
     }
 
-    if (pthread_sched_threads[self-1]->should_cancel) {
+    if (pthread_sched_threads[self - 1]->should_cancel) {
         pthread_exit(PTHREAD_CANCELED);
     }
 }
@@ -325,7 +393,7 @@ void __pthread_cleanup_push(__pthread_cleanup_datum_t *datum)
         return;
     }
 
-    pthread_thread_t *self = pthread_sched_threads[self_id-1];
+    pthread_thread_t *self = pthread_sched_threads[self_id - 1];
     datum->__next = self->cleanup_top;
     self->cleanup_top = datum;
 }
@@ -339,7 +407,7 @@ void __pthread_cleanup_pop(__pthread_cleanup_datum_t *datum, int execute)
         return;
     }
 
-    pthread_thread_t *self = pthread_sched_threads[self_id-1];
+    pthread_thread_t *self = pthread_sched_threads[self_id - 1];
     self->cleanup_top = datum->__next;
 
     if (execute != 0) {
@@ -348,4 +416,159 @@ void __pthread_cleanup_pop(__pthread_cleanup_datum_t *datum, int execute)
          *  invoke it (if execute is non-zero)." */
         datum->__routine(datum->__arg);
     }
+}
+
+
+int pthread_key_create(pthread_key_t *key, void(*destructor)(void *))
+{
+    int result = -1;
+    pthread_t self = pthread_self();
+    pthread_thread_t *pt = pthread_sched_threads[self - 1];
+
+    mutex_lock(&pthread_mutex);
+
+    thread_key_t *local_key = thread_keys;
+    thread_key_t *local_key_previous = thread_keys;
+
+    if (thread_keys == NULL) {
+        thread_keys = (thread_key_t *) malloc(sizeof(thread_key_t));
+        thread_keys->next = NULL;
+        thread_keys->key = 0;
+        thread_keys->destructor = destructor;
+
+        *key = thread_keys->key;
+        local_key = thread_keys;
+    }
+    else {
+        while (local_key != NULL && !(local_key_previous->key + 1 < local_key->key)) {
+            local_key_previous = local_key;
+            local_key = local_key->next;
+        }
+
+        local_key_previous->next = (thread_key_t *) malloc(sizeof(thread_key_t));
+        local_key_previous->next->next = local_key;
+        local_key_previous->next->key = local_key_previous->key + 1;
+        local_key_previous->next->destructor = destructor;
+
+        *key = local_key_previous->next->key;
+        local_key = local_key_previous->next;
+    }
+
+    tls_data_t *tls = pt->tls;
+
+    if (tls == NULL) {
+        pt->tls = malloc(sizeof(tls_data_t));
+        tls = pt->tls;
+    }
+    else {
+        while (tls->next != NULL) {
+            tls = tls->next;
+        }
+    }
+
+    tls->next = malloc(sizeof(tls_data_t));
+    tls->next->key = local_key->key;
+    tls->next->value = NULL;
+    tls->next->next = NULL;
+
+    result = 0;
+    mutex_unlock(&pthread_mutex);
+    return result;
+}
+
+int pthread_key_delete(pthread_key_t key)
+{
+    pthread_t self = pthread_self();
+    pthread_thread_t *pt = pthread_sched_threads[self - 1];
+    mutex_lock(&pthread_mutex);
+
+    if (thread_keys == NULL) {
+        mutex_unlock(&pthread_mutex);
+        return -1;
+    }
+
+    thread_key_t *local_key = thread_keys;
+    thread_key_t *local_key_previous = thread_keys;
+
+    while (local_key != NULL && local_key->key != key) {
+        local_key_previous = local_key;
+        local_key = local_key->next;
+    }
+
+    if (local_key != NULL) {
+        if (local_key != thread_keys) {
+            local_key_previous->next = local_key->next;
+        }
+        else {
+            thread_keys = local_key->next;
+        }
+
+        free(local_key);
+    }
+    else {
+        mutex_unlock(&pthread_mutex);
+        return -1;
+    }
+
+    tls_data_t *tls = pt->tls;
+    tls_data_t *previous_tls = pt->tls;
+
+    while (tls != NULL && tls->key != key) {
+        previous_tls = tls;
+        tls = tls->next;
+    }
+
+    if (tls != NULL) {
+        if (tls != pt->tls) {
+            previous_tls->next = tls->next;
+        }
+        else {
+            pt->tls = tls->next;
+        }
+
+        free(tls);
+    }
+    else {
+        mutex_unlock(&pthread_mutex);
+        return -1;
+    }
+
+    mutex_unlock(&pthread_mutex);
+    return 0;
+}
+
+void *pthread_getspecific(pthread_key_t key)
+{
+    pthread_t self = pthread_self();
+    pthread_thread_t *pt = pthread_sched_threads[self - 1];
+    void *result = 0;
+
+    tls_data_t *tls = pt->tls;
+
+    while (tls != NULL && tls->key != key) {
+        tls = tls->next;
+    }
+
+    result = tls ? tls->value : 0;
+    return result;
+}
+
+int pthread_setspecific(pthread_key_t key, const void *value)
+{
+    pthread_t self = pthread_self();
+
+    pthread_thread_t *pt = pthread_sched_threads[self - 1];
+
+    tls_data_t *tls = pt->tls;
+
+    while (tls != NULL && tls->key != key) {
+        tls = tls->next;
+    }
+
+    if (tls == NULL) {
+        return -1;
+    }
+
+    tls->value = (void *)value;
+    return 0;
 }

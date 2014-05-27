@@ -87,6 +87,7 @@ static char pthread_reaper_stack[PTHREAD_REAPER_STACKSIZE];
 typedef struct thread_key {
     struct thread_key *next;
     unsigned int key;
+    unsigned int use_count;
     void (*destructor)(void *);
 } thread_key_t;
 
@@ -443,6 +444,7 @@ int pthread_key_create(pthread_key_t *key, void(*destructor)(void *))
         local_key_previous->next = (thread_key_t *) malloc(sizeof(thread_key_t));
         local_key_previous->next->next = local_key;
         local_key_previous->next->key = local_key_previous->key + 1;
+        local_key_previous->next->use_count = 0;
         local_key_previous->next->destructor = destructor;
 
         *key = local_key_previous->next->key;
@@ -485,8 +487,10 @@ int pthread_key_delete(pthread_key_t key)
         else {
             thread_keys = local_key->next;
         }
-
-        free(local_key);
+       
+        if (local_key->use_count == 0 || --(local_key->use_count)) {
+            free(local_key);
+        }
     }
     else {
         mutex_unlock(&pthread_mutex);
@@ -551,11 +555,22 @@ int pthread_setspecific(pthread_key_t key, const void *value)
 
     tls_data_t *tls = pt->tls;
 
+    thread_key_t *local_key = thread_keys;
+
+    while (local_key != NULL && local_key->key != key) {
+        local_key = local_key->next;
+    }
+
+    if (local_key == NULL) {
+        return -1;
+    }
+
     if (tls == NULL) {
         pt->tls = malloc(sizeof(tls_data_t));
         tls = pt->tls;
         tls->next = NULL;
         tls->value = NULL;
+        local_key->use_count++;
     }
     else {
         while (tls->next != NULL && tls->next->key != key) {
@@ -566,6 +581,7 @@ int pthread_setspecific(pthread_key_t key, const void *value)
             tls->next = malloc(sizeof(tls_data_t));
             tls->next->value = NULL;
             tls->next->next = NULL;
+            local_key->use_count++;
         }
         tls = tls->next;
     }

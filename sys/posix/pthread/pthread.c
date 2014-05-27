@@ -554,17 +554,22 @@ int pthread_setspecific(pthread_key_t key, const void *value)
     if (tls == NULL) {
         pt->tls = malloc(sizeof(tls_data_t));
         tls = pt->tls;
+        tls->next = NULL;
+        tls->value = NULL;
     }
     else {
-        while (tls->next != NULL) {
+        while (tls->next != NULL && tls->next->key != key) {
             tls = tls->next;
         }
-        tls->next = malloc(sizeof(tls_data_t));
+
+        if (tls->next == NULL) {
+            tls->next = malloc(sizeof(tls_data_t));
+            tls->next->value = NULL;
+            tls->next->next = NULL;
+        }
         tls = tls->next;
     }
 
-    tls->value = NULL;
-    tls->next = NULL;
     tls->key = key;
     tls->value = (void *)value;
     return 0;

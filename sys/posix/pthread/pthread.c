@@ -488,7 +488,7 @@ int pthread_key_delete(pthread_key_t key)
             thread_keys = local_key->next;
         }
        
-        if (local_key->use_count == 0 || --(local_key->use_count)) {
+        if (local_key->use_count == 0 || (--(local_key->use_count) == 0)) {
             free(local_key);
         }
     }

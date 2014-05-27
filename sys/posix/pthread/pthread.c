@@ -94,9 +94,7 @@ static thread_key_t *thread_keys;
 
 static void pthread_keys_exit(void *parameter)
 {
-    (void)parameter;
-    pthread_t self = pthread_self();
-    pthread_thread_t *pt = pthread_sched_threads[self - 1];
+    pthread_thread_t *pt = (pthread_thread_t*)parameter;
 
     tls_data_t *tls = pt->tls;
     tls_data_t *previous_tls = pt->tls;
@@ -128,7 +126,7 @@ static void pthread_start_routine(void)
 
     void *retval;
 
-    pthread_cleanup_push(pthread_keys_exit, NULL);
+    pthread_cleanup_push(pthread_keys_exit, pt);
     retval = pt->start_routine(pt->arg);
     pthread_cleanup_pop(1);
 

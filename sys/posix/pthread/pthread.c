@@ -53,8 +53,8 @@ enum pthread_thread_status {
     PTS_ZOMBIE,
 };
 
-typedef struct st_tls_data_t {
-    struct st_tls_data_t *next;
+typedef struct tls_data {
+    struct tls_data *next;
     unsigned int key;
     void *value;
 } tls_data_t;
@@ -70,7 +70,7 @@ typedef struct pthread_thread {
     void *(*start_routine)(void *);
     void *arg;
 
-    struct st_tls_data_t *tls;
+    struct tls_data *tls;
 
     char *stack;
 
@@ -216,7 +216,7 @@ int pthread_create(pthread_t *newthread, const pthread_attr_t *attr, void * (*st
         return -1;
     }
 
-    sched_switch (sched_active_thread->priority, PRIORITY_MAIN);
+    sched_switch(sched_active_thread->priority, PRIORITY_MAIN);
 
     return 0;
 }

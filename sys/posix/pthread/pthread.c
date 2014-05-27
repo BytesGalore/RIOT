@@ -84,8 +84,8 @@ static volatile int pthread_reaper_pid = -1;
 
 static char pthread_reaper_stack[PTHREAD_REAPER_STACKSIZE];
 
-typedef struct st_thread_key_t {
-    struct st_thread_key_t *next;
+typedef struct thread_key {
+    struct thread_key *next;
     unsigned int key;
     void (*destructor)(void *);
 } thread_key_t;

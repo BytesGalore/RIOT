@@ -51,5 +51,5 @@ int pthread_key_create(pthread_key_t *key, void (*destructor)(void *));
 int pthread_key_delete(pthread_key_t key);
 
 
-/** @} */
 #endif /* __SYS__POSIX__PTHREAD_TLS__H */
+/** @} */

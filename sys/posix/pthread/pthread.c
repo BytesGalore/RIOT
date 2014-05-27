@@ -421,6 +421,12 @@ int pthread_key_create(pthread_key_t *key, void(*destructor)(void *))
 {
     int result = -1;
     pthread_t self = pthread_self();
+
+    if (self == 0) {
+        DEBUG("ERROR called pthread_self() returned 0 in \"%s\"!\n", __func__);
+        return result;
+    }
+
     pthread_thread_t *pt = pthread_sched_threads[self - 1];
 
     mutex_lock(&pthread_mutex);
@@ -477,6 +483,12 @@ int pthread_key_create(pthread_key_t *key, void(*destructor)(void *))
 int pthread_key_delete(pthread_key_t key)
 {
     pthread_t self = pthread_self();
+
+    if (self == 0) {
+        DEBUG("ERROR called pthread_self() returned 0 in \"%s\"!\n", __func__);
+        return -1;
+    }
+
     pthread_thread_t *pt = pthread_sched_threads[self - 1];
     mutex_lock(&pthread_mutex);
 
@@ -538,6 +550,12 @@ int pthread_key_delete(pthread_key_t key)
 void *pthread_getspecific(pthread_key_t key)
 {
     pthread_t self = pthread_self();
+
+    if (self == 0) {
+        DEBUG("ERROR called pthread_self() returned 0 in \"%s\"!\n", __func__);
+        return NULL;
+    }
+
     pthread_thread_t *pt = pthread_sched_threads[self - 1];
     void *result = 0;
 
@@ -547,13 +565,18 @@ void *pthread_getspecific(pthread_key_t key)
         tls = tls->next;
     }
 
-    result = tls ? tls->value : 0;
+    result = tls ? tls->value : NULL;
     return result;
 }
 
 int pthread_setspecific(pthread_key_t key, const void *value)
 {
     pthread_t self = pthread_self();
+
+    if (self == 0) {
+        DEBUG("ERROR called pthread_self() returned 0 in \"%s\"!\n", __func__);
+        return -1;
+    }
 
     pthread_thread_t *pt = pthread_sched_threads[self - 1];
 

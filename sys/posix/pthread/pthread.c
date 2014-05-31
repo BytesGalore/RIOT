@@ -54,8 +54,8 @@ enum pthread_thread_status {
 };
 
 typedef struct tls_data {
+    pthread_key_t key;
     struct tls_data *next;
-    unsigned int key;
     void *value;
 } tls_data_t;
 
@@ -84,40 +84,11 @@ static volatile int pthread_reaper_pid = -1;
 
 static char pthread_reaper_stack[PTHREAD_REAPER_STACKSIZE];
 
-typedef struct thread_key {
-    struct thread_key *next;
-    unsigned int key;
-    unsigned int use_count;
+struct __pthread_key {
     void (*destructor)(void *);
-} thread_key_t;
+};
 
-static thread_key_t *thread_keys;
-
-static void pthread_keys_exit(void *parameter)
-{
-    pthread_thread_t *pt = (pthread_thread_t*)parameter;
-
-    tls_data_t *tls = pt->tls;
-    tls_data_t *previous_tls = pt->tls;
-
-    while (tls != NULL) {
-        previous_tls = tls;
-        tls = tls->next;
-
-        thread_key_t *local_key = thread_keys;
-
-        while (local_key != NULL && local_key->key != previous_tls->key) {
-            local_key = local_key->next;
-        }
-
-        if (local_key != NULL) {
-            local_key->destructor((void *)local_key->key);
-        }
-
-        pthread_key_delete(previous_tls->key);
-    }
-
-}
+static void pthread_keys_exit(pthread_thread_t *pt);
 
 static void pthread_start_routine(void)
 {
@@ -125,12 +96,7 @@ static void pthread_start_routine(void)
 
     pthread_thread_t *pt = pthread_sched_threads[self - 1];
 
-    void *retval;
-
-    pthread_cleanup_push(pthread_keys_exit, pt);
-    retval = pt->start_routine(pt->arg);
-    pthread_cleanup_pop(1);
-
+    void *retval = pt->start_routine(pt->arg);
     pthread_exit(retval);
 }
 
@@ -160,7 +126,6 @@ static void pthread_reaper(void)
         free(m.content.ptr);
     }
 }
-
 
 int pthread_create(pthread_t *newthread, const pthread_attr_t *attr, void *(*start_routine)(void *), void *arg)
 {
@@ -231,6 +196,8 @@ void pthread_exit(void *retval)
 
             ct->__routine(ct->__arg);
         }
+
+        pthread_keys_exit(self);
 
         self->thread_pid = -1;
         DEBUG("pthread_exit(%p), self == %p\n", retval, (void *) self);
@@ -402,176 +369,164 @@ void __pthread_cleanup_pop(__pthread_cleanup_datum_t *datum, int execute)
     }
 }
 
+/**
+ * @brief   Used while manipulating the TLS of a pthread.
+ */
+static struct mutex_t tls_mutex;
 
-int pthread_key_create(pthread_key_t *key, void(*destructor)(void *))
+/**
+ * @brief        Find a thread-specific datum.
+ * @param[in]    pt     The calling pthread.
+ * @param[in]    key    The key to look up.
+ * @param[out]   prev   The datum before the result. `NULL` if the result is the first key. Spurious if the key was not found.
+ * @returns      The datum or `NULL`.
+ */
+static tls_data_t *find_specific(pthread_thread_t *pt, pthread_key_t key, tls_data_t **prev)
 {
-    int result = -1;
-    mutex_lock(&pthread_mutex);
+    tls_data_t *specific = pt->tls;
+    *prev = NULL;
 
-    thread_key_t *local_key = thread_keys;
-    thread_key_t *local_key_previous = thread_keys;
-
-    if (thread_keys == NULL) {
-        thread_keys = (thread_key_t *) malloc(sizeof(thread_key_t));
-        thread_keys->next = NULL;
-        thread_keys->key = 0;
-        thread_keys->destructor = destructor;
-
-        *key = thread_keys->key;
-        local_key = thread_keys;
-    }
-    else {
-        while (local_key != NULL && !(local_key_previous->key + 1 < local_key->key)) {
-            local_key_previous = local_key;
-            local_key = local_key->next;
+    while (specific) {
+        if (specific->key == key) {
+            return specific;
         }
 
-        local_key_previous->next = (thread_key_t *) malloc(sizeof(thread_key_t));
-        local_key_previous->next->next = local_key;
-        local_key_previous->next->key = local_key_previous->key + 1;
-        local_key_previous->next->use_count = 0;
-        local_key_previous->next->destructor = destructor;
-
-        *key = local_key_previous->next->key;
+        *prev = specific;
+        specific = specific->next;
     }
 
-    result = 0;
-    mutex_unlock(&pthread_mutex);
-    return result;
-}
-
-int pthread_key_delete(pthread_key_t key)
-{
-    pthread_t self = pthread_self();
-
-    if (self == 0) {
-        DEBUG("ERROR called pthread_self() returned 0 in \"%s\"!\n", __func__);
-        return -1;
-    }
-
-    pthread_thread_t *pt = pthread_sched_threads[self - 1];
-    mutex_lock(&pthread_mutex);
-
-    if (thread_keys == NULL) {
-        mutex_unlock(&pthread_mutex);
-        return -1;
-    }
-
-    thread_key_t *local_key = thread_keys;
-    thread_key_t *local_key_previous = thread_keys;
-
-    while (local_key != NULL && local_key->key != key) {
-        local_key_previous = local_key;
-        local_key = local_key->next;
-    }
-
-    if (local_key != NULL) {
-        if (local_key != thread_keys) {
-            local_key_previous->next = local_key->next;
-        }
-        else {
-            thread_keys = local_key->next;
-        }
-       
-        if (local_key->use_count == 0 || (--(local_key->use_count) == 0)) {
-            free(local_key);
-        }
-    }
-    else {
-        mutex_unlock(&pthread_mutex);
-        return -1;
-    }
-
-    tls_data_t *tls = pt->tls;
-    tls_data_t *previous_tls = pt->tls;
-
-    while (tls != NULL && tls->key != key) {
-        previous_tls = tls;
-        tls = tls->next;
-    }
-
-    if (tls != NULL) {
-        if (tls != pt->tls) {
-            previous_tls->next = tls->next;
-        }
-        else {
-            pt->tls = tls->next;
-        }
-
-        free(tls);
-    }
-
-    mutex_unlock(&pthread_mutex);
     return 0;
 }
 
-void *pthread_getspecific(pthread_key_t key)
+/**
+ * @brief       Find or allocate a thread specific datum.
+ * @details     The `key` must be initialized.
+ *              The result will be the head of the thread-specific datums afterwards.
+ * @param[in]   key   The key to lookup.
+ * @returns     The datum. `NULL` on ENOMEM or if the caller is not a pthread.
+ */
+static tls_data_t *get_specific(pthread_key_t key)
 {
     pthread_t self = pthread_self();
-
     if (self == 0) {
         DEBUG("ERROR called pthread_self() returned 0 in \"%s\"!\n", __func__);
         return NULL;
     }
 
     pthread_thread_t *pt = pthread_sched_threads[self - 1];
-    void *result = 0;
+    tls_data_t *prev, *specific = find_specific(pt, key, &prev);
 
-    tls_data_t *tls = pt->tls;
-
-    while (tls != NULL && tls->key != key) {
-        tls = tls->next;
+    /* Did the datum already exist? */
+    if (specific) {
+        if (prev) {
+            /* Move the datum to the front for a faster next lookup. */
+            /* Let's pretend that we have a totally degenerated splay tree. ;-) */
+            prev->next = specific->next;
+            specific->next = pt->tls;
+            pt->tls = specific;
+        }
+        return specific;
     }
 
-    result = tls ? tls->value : NULL;
+    /* Allocate new datum. */
+    specific = malloc(sizeof (*specific));
+    if (specific) {
+        specific->key = key;
+        specific->next = pt->tls;
+        specific->value = NULL;
+        pt->tls = specific;
+    }
+    else {
+        DEBUG("ERROR out of memory in %s!\n", __func__);
+    }
+    return specific;
+}
+
+int pthread_key_create(pthread_key_t *key, void (*destructor)(void *))
+{
+    *key = malloc(sizeof (**key));
+    if (!*key) {
+        return ENOMEM;
+    }
+
+    (*key)->destructor = destructor;
+    return 0;
+}
+
+int pthread_key_delete(pthread_key_t key)
+{
+    if (!key) {
+        return EINVAL;
+    }
+
+    mutex_lock(&tls_mutex);
+    for (unsigned i = 0; i < sizeof (pthread_sched_threads) / sizeof (*pthread_sched_threads); ++i) {
+        pthread_thread_t *pt = pthread_sched_threads[i];
+        if (!pt) {
+            continue;
+        }
+
+        tls_data_t *prev, *specific = find_specific(pt, key, &prev);
+        if (specific) {
+            if (prev) {
+                prev->next = specific->next;
+            }
+            else {
+                pt->tls = specific->next;
+            }
+            free(specific);
+        }
+    }
+    mutex_unlock(&tls_mutex);
+
+    return 0;
+}
+
+void *pthread_getspecific(pthread_key_t key)
+{
+    if (!key) {
+        return NULL;
+    }
+
+    mutex_lock(&tls_mutex);
+    tls_data_t *specific = get_specific(key);
+    void *result = specific ? specific->value : NULL;
+    mutex_unlock(&tls_mutex);
+
     return result;
 }
 
 int pthread_setspecific(pthread_key_t key, const void *value)
 {
-    pthread_t self = pthread_self();
-
-    if (self == 0) {
-        DEBUG("ERROR called pthread_self() returned 0 in \"%s\"!\n", __func__);
-        return -1;
+    if (!key) {
+        return EINVAL;
     }
 
-    pthread_thread_t *pt = pthread_sched_threads[self - 1];
-
-    tls_data_t *tls = pt->tls;
-
-    thread_key_t *local_key = thread_keys;
-
-    while (local_key != NULL && local_key->key != key) {
-        local_key = local_key->next;
+    mutex_lock(&tls_mutex);
+    tls_data_t *specific = get_specific(key);
+    if (specific) {
+        specific->value = (void *) value;
     }
+    mutex_unlock(&tls_mutex);
 
-    if (local_key == NULL) {
-        return -1;
-    }
+    return specific ? 0 : ENOMEM;
+}
 
-    if (tls == NULL) {
-        pt->tls = malloc(sizeof(tls_data_t));
-        tls = pt->tls;
-        tls->next = NULL;
-        tls->value = NULL;
-        local_key->use_count++;
-    }
-    else {
-        while (tls->next != NULL && tls->next->key != key) {
-            tls = tls->next;
+static void pthread_keys_exit(pthread_thread_t *pt)
+{
+    /* Calling the dtor could cause another pthread_exit(), so we dehead and free defore calling it. */
+    mutex_lock(&tls_mutex);
+    for (tls_data_t *specific; (specific = pt->tls); ) {
+        pt->tls = specific->next;
+        void *value = specific->value;
+        void (*destructor)(void *) = specific->key->destructor;
+        free(specific);
+
+        if (value && destructor) {
+            mutex_unlock(&tls_mutex);
+            destructor(value);
+            mutex_lock(&tls_mutex);
         }
-
-        if (tls->next == NULL) {
-            tls->next = malloc(sizeof(tls_data_t));
-            tls->next->value = NULL;
-            tls->next->next = NULL;
-            local_key->use_count++;
-        }
-        tls = tls->next;
     }
-
-    tls->key = key;
-    tls->value = (void *)value;
-    return 0;
+    mutex_unlock(&tls_mutex);
 }

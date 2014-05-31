@@ -17,8 +17,16 @@
 #ifndef __SYS__POSIX__PTHREAD_TLS__H
 #define __SYS__POSIX__PTHREAD_TLS__H
 
+/**
+ * @brief   Internal representation of a thread-specific key.
+ * @internal
+ */
+struct __pthread_key;
 
-typedef unsigned int pthread_key_t;
+/**
+ * @brief   A thread-specific key.
+ */
+typedef struct __pthread_key *pthread_key_t;
 
 /**
  * @brief returns the requested tls
@@ -31,7 +39,7 @@ void *pthread_getspecific(pthread_key_t key);
  * @brief set and binds a specific tls to a key
  * @param[in] key the identifier for the tls
  * @param[in] value pointer to the location of the tls
- * @return returns 0 on success, a negative errorcode otherwise
+ * @return returns 0 on success, an errorcode otherwise
  */
 int pthread_setspecific(pthread_key_t key, const void *value);
 
@@ -39,17 +47,17 @@ int pthread_setspecific(pthread_key_t key, const void *value);
  * @brief crates a new key to be used to identify a specific tls
  * @param[out] key the created key is scribed to the given pointer
  * @param[in] destructor function pointer called when non NULL just befor the pthread exits
- * @return returns 0 on success, a negative errorcode otherwise
+ * @return returns 0 on success, an errorcode otherwise
  */
 int pthread_key_create(pthread_key_t *key, void (*destructor)(void *));
 
 /**
- * @brief deletes the pointers to the key and tls
- * @param[in] key the identifier of the tls to be deleted
- * @return returns 0 on success, a negative errorcode otherwise
+ * @brief deletes a pthread_key_t that was previously created with pthread_key_create.
+ * @details does not call the destructor of the key
+ * @param[in] key the identifier of the key to be deleted
+ * @return returns 0 on success, an errorcode otherwise
  */
 int pthread_key_delete(pthread_key_t key);
-
 
 #endif /* __SYS__POSIX__PTHREAD_TLS__H */
 /** @} */

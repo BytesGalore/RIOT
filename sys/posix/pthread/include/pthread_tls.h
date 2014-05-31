@@ -12,6 +12,7 @@
  * @file
  * @brief       RIOT POSIX thread local storage
  * @author      Martin Landsmann <martin.landsmann@haw-hamburg.de>
+ * @author      René Kijewski <rene.kijewski@fu-berlin.de>
  */
 
 #ifndef __SYS__POSIX__PTHREAD_TLS__H
@@ -21,12 +22,18 @@
  * @brief   Internal representation of a thread-specific key.
  * @internal
  */
-struct __pthread_key;
+struct __pthread_tls_key;
+
+/**
+ * @brief   A single thread-specific datum.
+ * @internal
+ */
+struct __pthread_tls_datum;
 
 /**
  * @brief   A thread-specific key.
  */
-typedef struct __pthread_key *pthread_key_t;
+typedef struct __pthread_tls_key *pthread_key_t;
 
 /**
  * @brief returns the requested tls
@@ -58,6 +65,19 @@ int pthread_key_create(pthread_key_t *key, void (*destructor)(void *));
  * @return returns 0 on success, an errorcode otherwise
  */
 int pthread_key_delete(pthread_key_t key);
+
+/**
+ * @brief destroys all thread-specific keys for pthread `self_id`.
+ * @param[in] self_id the result of pthread_self().
+ * @internal
+ */
+void __pthread_keys_exit(int self_id);
+
+/**
+ * @brief returns the pointer to the head of the list of thread-specific data.
+ * @internal
+ */
+struct __pthread_tls_datum **__pthread_get_tls_head(int self_id) PURE;
 
 #endif /* __SYS__POSIX__PTHREAD_TLS__H */
 /** @} */

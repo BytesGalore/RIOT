@@ -185,7 +185,11 @@ void pthread_exit(void *retval)
             ct->__routine(ct->__arg);
         }
 
-        __pthread_keys_exit(self_id);
+        /* Prevent linking in pthread_tls.o if no TSS functions were used. */
+        extern void __pthread_keys_exit(int self_id) __attribute__((weak));
+        if (__pthread_keys_exit) {
+            __pthread_keys_exit(self_id);
+        }
 
         self->thread_pid = -1;
         DEBUG("pthread_exit(%p), self == %p\n", retval, (void *) self);

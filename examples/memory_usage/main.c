@@ -110,10 +110,11 @@ static void start_udp_server(void)
 
 /**
 * @brief sends a packet to a destination address
+* @param[in] dst the destination IPv6 address
 * @param[in] payload pointer to the payload to be sent
 * @param[in] size number of bytes of the payload
 */
-static void udp_send(char* payload, size_t payload_size)
+static void udp_send(ipv6_addr_t* dst, char* payload, size_t payload_size)
 {
     int sock;
     sockaddr6_t sa;
@@ -126,16 +127,11 @@ static void udp_send(char* payload, size_t payload_size)
         return;
     }
 
-    ipv6_addr_t dst;
-    /* choose addresses */
-    ipv6_addr_init(&dst, 0x2015, 0x3, 0x18, 0x1111, 0x0, 0x0, 0x0, 0x99);
-
     memset(&sa, 0, sizeof(sa));
     sa.sin6_family = AF_INET;
     memcpy(&sa.sin6_addr, &dst, 16);
     sa.sin6_port = HTONS(UDP_PORT);
 
-    ps();
     bytes_sent = socket_base_sendto(sock,
                                     payload,
                                     payload_size,
@@ -223,9 +219,13 @@ static int setup_node(void)
     set_pan(PAN);
     iface_id = set_if();
 
-    /* choose addresses */
+#if (WITH_UDP_SERVER)
+    /* set a fixed  address for this node */
+    ipv6_addr_init(&myaddr, 0x2015, 0x3, 0x18, 0x1111, 0x0, 0x0, 0x0, 0x99);
+#else
+    /* choose address */
     ipv6_addr_init(&myaddr, 0x2015, 0x3, 0x18, 0x1111, 0x0, 0x0, 0x0, iface_id);
-
+#endif
     /* and set it */
     set_address(&myaddr);
 
@@ -244,27 +244,39 @@ ipv6_addr_t *get_next_hop(ipv6_addr_t *dest) {
 
 int main(void)
 {
+    char addr_str[IPV6_MAX_ADDR_STR_LEN];
     puts("Hello!");
 
     printf("You are running RIOT on a(n) %s board.\n", RIOT_BOARD);
     printf("This board features a(n) %s MCU.\n", RIOT_MCU);
 
-    char payload[80];
-    int msgnum = 0;
-
     setup_node();
     ipv6_iface_set_routing_provider(get_next_hop);
+
+    printf("[main] My address is: %s\n",
+            ipv6_addr_to_str(addr_str, IPV6_MAX_ADDR_STR_LEN, &myaddr));
 
     ps();
 #if (WITH_UDP_SERVER)
     start_udp_server();
-#endif
+    (void) udp_send;
+    /* nothing left to do */
+    while(1){
+        sleep(30);
+    }
+#else
+    char payload[80];
+    int msgnum = 0;
+
+    /* choose a receiver address */
+    ipv6_addr_t dst;
+    ipv6_addr_init(&dst, 0x2015, 0x3, 0x18, 0x1111, 0x0, 0x0, 0x0, 0x99);
 
     while(1){
         sleep(30);
         snprintf(payload, 80, "node(%x) msg: %d", HTONS(myaddr.uint16[7]), msgnum++);
-        udp_send(payload, (strlen(payload) + 1));
+        udp_send(&dst, payload, (strlen(payload) + 1));
     }
-
+#endif
     return 0;
 }

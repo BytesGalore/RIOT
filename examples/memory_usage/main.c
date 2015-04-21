@@ -129,7 +129,7 @@ static void udp_send(ipv6_addr_t* dst, char* payload, size_t payload_size)
 
     memset(&sa, 0, sizeof(sa));
     sa.sin6_family = AF_INET;
-    memcpy(&sa.sin6_addr, &dst, 16);
+    memcpy(&sa.sin6_addr, dst, 16);
     sa.sin6_port = HTONS(UDP_PORT);
 
     bytes_sent = socket_base_sendto(sock,

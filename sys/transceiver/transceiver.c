@@ -28,6 +28,7 @@
 #include "radio/types.h"
 
 #include "transceiver.h"
+#include "ps.h"
 
 /* supported transceivers */
 #ifdef MODULE_CC110X
@@ -802,9 +803,16 @@ static int8_t send_packet(transceiver_type_t t, void *pkt)
 #ifdef MODULE_AT86RF231
 
         case TRANSCEIVER_AT86RF231:
+            res = 1;
+            (void)p;
+            (void)at86rf231_pkt;
+            puts("transceiver:");
+            ps();
+            /*
             memcpy(&at86rf231_pkt.frame, &p->frame, sizeof(ieee802154_frame_t));
             at86rf231_pkt.length = p->frame.payload_len + IEEE_802154_FCS_LEN;
             res = at86rf231_send(&at86rf231_pkt);
+            */
             break;
 #endif
 

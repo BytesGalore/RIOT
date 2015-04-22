@@ -19,9 +19,10 @@
  */
 
 #include <stdio.h>
-#include <unistd.h>
+//#include <unistd.h>
 #include "udp.h"
 #include "ps.h"
+#include "hwtimer.h"
 
 #define CHANNEL         (26)     /**< The used channel */
 #define PAN             (0x03e9) /**< The used PAN ID */
@@ -33,6 +34,8 @@
 
 /** The node IPv6 address */
 ipv6_addr_t myaddr;
+
+mutex_t mtx_send = MUTEX_INIT;
 
 #if (WITH_UDP_SERVER)
 /** The UDP server thread stack */
@@ -120,7 +123,7 @@ static void udp_send(ipv6_addr_t* dst, char* payload, size_t payload_size)
     sockaddr6_t sa;
     int bytes_sent;
     sock = socket_base_socket(PF_INET6, SOCK_DGRAM, IPPROTO_UDP);
-    char addr_str[IPV6_MAX_ADDR_STR_LEN];
+    //char addr_str[IPV6_MAX_ADDR_STR_LEN];
 
     if (-1 == sock) {
         puts("[udp_send] Error Creating Socket!");
@@ -140,9 +143,10 @@ static void udp_send(ipv6_addr_t* dst, char* payload, size_t payload_size)
     if (bytes_sent < 0) {
         puts("[udp_send] Error sending packet!");
     } else {
+        /*
             printf("[udp_send] Successful deliverd %i bytes over UDP to %s to 6LoWPAN\n",
                    bytes_sent, ipv6_addr_to_str(addr_str, IPV6_MAX_ADDR_STR_LEN,
-                        &(sa.sin6_addr)));
+                        &(sa.sin6_addr)));*/
             }
 
     socket_base_close(sock);
@@ -243,12 +247,14 @@ ipv6_addr_t *get_next_hop(ipv6_addr_t *dest) {
 }
 
 int main(void)
-{
+{puts("main:");
+    ps();
     char addr_str[IPV6_MAX_ADDR_STR_LEN];
     puts("Hello!");
 
     printf("You are running RIOT on a(n) %s board.\n", RIOT_BOARD);
     printf("This board features a(n) %s MCU.\n", RIOT_MCU);
+
 
     setup_node();
     ipv6_iface_set_routing_provider(get_next_hop);
@@ -256,7 +262,6 @@ int main(void)
     printf("[main] My address is: %s\n",
             ipv6_addr_to_str(addr_str, IPV6_MAX_ADDR_STR_LEN, &myaddr));
 
-    ps();
 #if (WITH_UDP_SERVER)
     start_udp_server();
     (void) udp_send;
@@ -272,10 +277,16 @@ int main(void)
     ipv6_addr_t dst;
     ipv6_addr_init(&dst, 0x2015, 0x3, 0x18, 0x1111, 0x0, 0x0, 0x0, 0x99);
 
-    while(1){
-        sleep(30);
-        snprintf(payload, 80, "node(%x) msg: %d", HTONS(myaddr.uint16[7]), msgnum++);
-        udp_send(&dst, payload, (strlen(payload) + 1));
+    //puts("main:");
+
+    while(msgnum<10){
+        msgnum++;
+        printf("num: %d\n", msgnum);
+        //sleep(30);
+        //snprintf(payload, 80, "node(%x) msg: %d", HTONS(myaddr.uint16[7]), msgnum++);
+        udp_send(&dst, payload, 40);
+        //if(msgnum%100 == 0){printf("sent: %d\n", msgnum);}
+        //hwtimer_wait(20000);
     }
 #endif
     return 0;

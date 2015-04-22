@@ -32,6 +32,7 @@
 #include "socket.h"
 
 #include "udp.h"
+#include "ps.h"
 
 msg_t udp_msg_queue[UDP_PKT_RECV_BUF_SIZE];
 
@@ -166,7 +167,7 @@ int32_t udp_sendto(int s, const void *buf, uint32_t len, int flags,
     (void) tolen;
 
     if (udp_socket_compliancy(s) &&
-        (socket_base_get_socket(s)->socket_values.foreign_address.sin6_port == 0)) {
+        (socket_base_get_socket(s)->socket_values.foreign_address.sin6_port == 0)) {puts("UDP:"); ps();
         uint8_t send_buffer[BUFFER_SIZE];
 
         ipv6_hdr_t *temp_ipv6_header = ((ipv6_hdr_t *)(&send_buffer));

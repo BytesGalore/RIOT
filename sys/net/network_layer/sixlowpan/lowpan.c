@@ -193,8 +193,7 @@ int sixlowpan_lowpan_sendto(int if_id, const void *dest, int dest_len,
 
 #endif
 
-
-    if (iphc_status == LOWPAN_IPHC_ENABLE) {puts("LOWPAN_IPHC_ENABLE");
+    if (iphc_status == LOWPAN_IPHC_ENABLE) {
         if (!lowpan_iphc_encoding(if_id, dest, dest_len, ipv6_buf, data)) {
             return -1;
         }

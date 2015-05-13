@@ -19,7 +19,6 @@
  */
 
 #include <stdio.h>
-//#include <unistd.h>
 #include "udp.h"
 #include "ps.h"
 #include "hwtimer.h"

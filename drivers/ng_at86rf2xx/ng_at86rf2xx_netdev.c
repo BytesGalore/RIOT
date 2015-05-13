@@ -417,7 +417,7 @@ static int _get(ng_netdev_t *device, ng_netconf_opt_t opt,
             if (max_len < sizeof(int16_t)) {
                 return -EOVERFLOW;
             }
-            *((uint16_t *)val) = NG_AT86RF2XX_MAX_PKT_LENGTH;
+            *((uint16_t *)val) = NG_AT86RF2XX_MAX_PKT_LENGTH -15 -2;
             return sizeof(uint16_t);
 
         case NETCONF_OPT_STATE:

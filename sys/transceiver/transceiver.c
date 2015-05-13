@@ -806,13 +806,14 @@ static int8_t send_packet(transceiver_type_t t, void *pkt)
             res = 1;
             (void)p;
             (void)at86rf231_pkt;
-            puts("transceiver:");
-            ps();
-            /*
+            //puts("sending");
+            //puts("transceiver:");
+            //ps();
+
             memcpy(&at86rf231_pkt.frame, &p->frame, sizeof(ieee802154_frame_t));
             at86rf231_pkt.length = p->frame.payload_len + IEEE_802154_FCS_LEN;
             res = at86rf231_send(&at86rf231_pkt);
-            */
+            hwtimer_wait(10*1000);
             break;
 #endif
 

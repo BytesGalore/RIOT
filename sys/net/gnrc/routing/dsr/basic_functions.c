@@ -44,7 +44,7 @@ void dsr_construct_opt_rreq( void ) {
     
     dsr_route_request_option_t opt_rreq;
     opt_rreq.opt_type = 255;
-    opt_rreq.opt_data_length = 2 + 16 + (2*16);
+    opt_rreq.opt_data_length = 2 + 16 + (16);
     
     opt_rreq.target_address.u32[0] = byteorder_htonl(0x20010000);
     opt_rreq.target_address.u32[1] = byteorder_htonl(0x1234);
@@ -53,7 +53,7 @@ void dsr_construct_opt_rreq( void ) {
     opt_rreq.identification = 12345;
     
     /* total size is all plus 2 additional addresses */
-    dsr_hdr.payload_length = sizeof(opt_rreq) + (2*16);
+    dsr_hdr.payload_length = sizeof(opt_rreq) + (16);
 
     ipv6_addr_t hop1;// = IPV6_ADDR_UNSPECIFIED; // 0
     hop1.u32[0] = byteorder_htonl(0x20020000);
@@ -63,8 +63,8 @@ void dsr_construct_opt_rreq( void ) {
     hop2.u32[0] = byteorder_htonl(0x3333);
     
     gnrc_pktsnip_t *tmp_data;
-    tmp_data = gnrc_pktbuf_add(NULL, &hop2.u8[0], sizeof(ipv6_addr_t), GNRC_NETTYPE_UNDEF);
-    tmp_data = gnrc_pktbuf_add(tmp_data, &hop1.u8[0], sizeof(ipv6_addr_t), GNRC_NETTYPE_UNDEF);
+    //tmp_data = gnrc_pktbuf_add(NULL, &hop2.u8[0], sizeof(ipv6_addr_t), GNRC_NETTYPE_UNDEF);
+    tmp_data = gnrc_pktbuf_add(NULL, &hop1.u8[0], sizeof(ipv6_addr_t), GNRC_NETTYPE_UNDEF);
     tmp_data = gnrc_pktbuf_add(tmp_data, (uint8_t*)&opt_rreq, sizeof(opt_rreq), GNRC_NETTYPE_UNDEF);
     tmp_data = gnrc_pktbuf_add(tmp_data, (uint8_t*)&dsr_hdr, sizeof(dsr_hdr), GNRC_NETTYPE_UNDEF);
     

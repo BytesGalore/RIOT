@@ -24,9 +24,11 @@
 #define ENABLE_DEBUG    (1)
 #include "debug.h"
 
+/*
 #if ENABLE_DEBUG
 static char addr_str[IPV6_ADDR_MAX_STR_LEN];
 #endif
+*/
 
 void dsr_construct_opt_rreq( void ) {
     

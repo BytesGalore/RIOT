@@ -36,6 +36,60 @@ static kernel_pid_t _pid = KERNEL_PID_UNDEF;
  */
 static char _stack[THREAD_STACKSIZE_MAIN];
 
+static void _dump_snip(gnrc_pktsnip_t *pkt)
+{
+    switch (pkt->type) {
+        case GNRC_NETTYPE_UNDEF:
+            printf("NETTYPE_UNDEF (%i)\n", pkt->type);
+            //od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);
+            break;
+#ifdef MODULE_GNRC_NETIF
+        case GNRC_NETTYPE_NETIF:
+            printf("NETTYPE_NETIF (%i)\n", pkt->type);
+            //gnrc_netif_hdr_print(pkt->data);
+            break;
+#endif
+#ifdef MODULE_GNRC_SIXLOWPAN
+        case GNRC_NETTYPE_SIXLOWPAN:
+            printf("NETTYPE_SIXLOWPAN (%i)\n", pkt->type);
+            //sixlowpan_print(pkt->data, pkt->size);
+            break;
+#endif
+#ifdef MODULE_GNRC_IPV6
+        case GNRC_NETTYPE_IPV6:
+            printf("NETTYPE_IPV6 (%i)\n", pkt->type);
+            //ipv6_hdr_print(pkt->data);
+            break;
+#endif
+#ifdef MODULE_GNRC_ICMPV6
+        case GNRC_NETTYPE_ICMPV6:
+            printf("NETTYPE_ICMPV6 (%i)\n", pkt->type);
+            break;
+#endif
+#ifdef MODULE_GNRC_TCP
+        case GNRC_NETTYPE_TCP:
+            printf("NETTYPE_TCP (%i)\n", pkt->type);
+            break;
+#endif
+#ifdef MODULE_GNRC_UDP
+        case GNRC_NETTYPE_UDP:
+            printf("NETTYPE_UDP (%i)\n", pkt->type);
+           // udp_hdr_print(pkt->data);
+            break;
+#endif
+#ifdef TEST_SUITES
+        case GNRC_NETTYPE_TEST:
+            printf("NETTYPE_TEST (%i)\n", pkt->type);
+            //od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);
+            break;
+#endif
+        default:
+            printf("NETTYPE_UNKNOWN (%i)\n", pkt->type);
+            //od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);
+            break;
+    }
+}
+
 static int _receive(gnrc_pktsnip_t* pkt)
 {
     //gnrc_pktsnip_t *snip = pkt;

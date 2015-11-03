@@ -211,7 +211,7 @@ void dsr_construct_opt_rreq( void ) {
     opt_rreq.opt_data_length = 2 + 16 + (16);
     
     opt_rreq.target_address.u32[0] = byteorder_htonl(0x20010000);
-    opt_rreq.target_address.u32[1] = byteorder_htonl(0x1234);
+    opt_rreq.target_address.u32[1] = byteorder_htonl(0x00001234);
     
     /* some unique ID */
     opt_rreq.identification = 12345;

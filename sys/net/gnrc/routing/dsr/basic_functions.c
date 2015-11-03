@@ -249,7 +249,7 @@ void dsr_construct_opt_rreq( void ) {
     * */
     /* allocate UDP header, set source port := destination port */
     udp = gnrc_udp_hdr_build(tmp_data, port, 2, port, 2);
-    _receive(udp);
+    //_receive(udp);
     if (udp == NULL) {
         DEBUG("Error: unable to allocate UDP header");
         gnrc_pktbuf_release(tmp_data);

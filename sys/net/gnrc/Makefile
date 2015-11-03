@@ -79,6 +79,9 @@ endif
 ifneq (,$(filter gnrc_rpl_srh,$(USEMODULE)))
     DIRS += routing/rpl/srh
 endif
+ifneq (,$(filter gnrc_dsr,$(USEMODULE)))
+    DIRS += routing/dsr
+endif
 ifneq (,$(filter gnrc_sixlowpan,$(USEMODULE)))
     DIRS += network_layer/sixlowpan
 endif

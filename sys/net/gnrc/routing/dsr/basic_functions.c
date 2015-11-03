@@ -58,7 +58,7 @@ void dsr_construct_opt_rreq( void ) {
     ipv6_addr_t hop1;// = IPV6_ADDR_UNSPECIFIED; // 0
     hop1.u32[0] = byteorder_htonl(0x20020000);
     hop1.u32[0] = byteorder_htonl(0x2222);
-    /*ipv6_addr_t hop2;// = IPV6_ADDR_LOOPBACK; // 1
+    ipv6_addr_t hop2;// = IPV6_ADDR_LOOPBACK; // 1
     hop2.u32[0] = byteorder_htonl(0x20030000);
     hop2.u32[0] = byteorder_htonl(0x3333);
     */

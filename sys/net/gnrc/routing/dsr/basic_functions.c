@@ -215,7 +215,7 @@ void dsr_construct_opt_rreq( void ) {
     tmp_data = gnrc_pktbuf_add(NULL, (uint8_t*)&opt_rreq, sizeof(opt_rreq), GNRC_NETTYPE_UNDEF);
     tmp_data = gnrc_pktbuf_add(tmp_data, (uint8_t*)&dsr_hdr, sizeof(dsr_hdr), GNRC_NETTYPE_UNDEF);
     
-    _receive(tmp_data);
+    //_receive(tmp_data);
     /* set the IP fields 
      * Source Address: The originator.
      *                 on initial its me, when forwarding its someone else

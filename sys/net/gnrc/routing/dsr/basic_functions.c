@@ -202,9 +202,9 @@ void dsr_construct_opt_rreq( void ) {
     /* total size is all plus 2 additional addresses */
     dsr_hdr.payload_length = sizeof(opt_rreq) + (16);
 
-    uint32_t as_number; 
-    as_number = (uint32_t)(dsr_hdr);
-    printf("%x\n", as_number);
+    uint32_t* as_number; 
+    as_number = (uint32_t*)(&dsr_hdr);
+    printf("%x\n", *as_number);
 /*
     ipv6_addr_t hop1;// = IPV6_ADDR_UNSPECIFIED; // 0
     hop1.u32[0] = byteorder_htonl(0x20020000);

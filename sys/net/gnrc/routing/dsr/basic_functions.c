@@ -44,7 +44,7 @@ void dsr_construct_opt_rreq( void ) {
     
     dsr_route_request_option_t opt_rreq;
     opt_rreq.opt_type = 255;
-    opt_rreq.opt_data_length = byteorder_htonl(2 + 16 + (2*16));
+    opt_rreq.opt_data_length = 2 + 16 + (2*16);
     
     opt_rreq.target_address.u32[0] = byteorder_htonl(0x20010000);
     opt_rreq.target_address.u32[1] = byteorder_htonl(0x1234);

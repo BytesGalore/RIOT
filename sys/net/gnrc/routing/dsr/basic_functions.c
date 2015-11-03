@@ -45,7 +45,7 @@ static int _receive(gnrc_pktsnip_t* pkt)
     }
     
     udp_hdr_t* hdr = (udp_hdr_t*)snip->data;
-    printf("udp size: %d\n", byteorder_ntohl(hdr->length));
+    printf("udp size: %d\n", byteorder_ntohs(hdr->length));
     
     
     if( snip != NULL && snip->type == GNRC_NETTYPE_UDP) {

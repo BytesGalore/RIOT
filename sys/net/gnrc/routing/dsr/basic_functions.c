@@ -81,7 +81,7 @@ static void *_event_loop(void *arg)
 
 void dsr_start_listener(void)
 {
-   _pid = thread_create(_stack, sizeof(_stack), THREAD_PRIORITY_MAIN - 4), 
+   _pid = thread_create(_stack, sizeof(_stack), (THREAD_PRIORITY_MAIN - 4), 
                         CREATE_STACKTEST, _event_loop, NULL, "DSR");
 }
 

@@ -38,8 +38,6 @@ static char _stack[THREAD_STACKSIZE_MAIN];
 
 static int _receive(gnrc_pktsnip_t* pkt)
 {
-    int snips = 0;
-    int size = 0;
     gnrc_pktsnip_t *snip = pkt;
 
     if( snip != NULL && snip->type == GNRC_NETTYPE_UDP) {

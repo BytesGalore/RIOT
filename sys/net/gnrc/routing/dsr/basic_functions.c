@@ -36,60 +36,6 @@ static kernel_pid_t _pid = KERNEL_PID_UNDEF;
  */
 static char _stack[THREAD_STACKSIZE_MAIN];
 
-static void _dump_snip(gnrc_pktsnip_t *pkt)
-{
-    switch (pkt->type) {
-        case GNRC_NETTYPE_UNDEF:
-            printf("NETTYPE_UNDEF (%i)\n", pkt->type);
-            //od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);
-            break;
-#ifdef MODULE_GNRC_NETIF
-        case GNRC_NETTYPE_NETIF:
-            printf("NETTYPE_NETIF (%i)\n", pkt->type);
-            //gnrc_netif_hdr_print(pkt->data);
-            break;
-#endif
-#ifdef MODULE_GNRC_SIXLOWPAN
-        case GNRC_NETTYPE_SIXLOWPAN:
-            printf("NETTYPE_SIXLOWPAN (%i)\n", pkt->type);
-            //sixlowpan_print(pkt->data, pkt->size);
-            break;
-#endif
-#ifdef MODULE_GNRC_IPV6
-        case GNRC_NETTYPE_IPV6:
-            printf("NETTYPE_IPV6 (%i)\n", pkt->type);
-            //ipv6_hdr_print(pkt->data);
-            break;
-#endif
-#ifdef MODULE_GNRC_ICMPV6
-        case GNRC_NETTYPE_ICMPV6:
-            printf("NETTYPE_ICMPV6 (%i)\n", pkt->type);
-            break;
-#endif
-#ifdef MODULE_GNRC_TCP
-        case GNRC_NETTYPE_TCP:
-            printf("NETTYPE_TCP (%i)\n", pkt->type);
-            break;
-#endif
-#ifdef MODULE_GNRC_UDP
-        case GNRC_NETTYPE_UDP:
-            printf("NETTYPE_UDP (%i)\n", pkt->type);
-           // udp_hdr_print(pkt->data);
-            break;
-#endif
-#ifdef TEST_SUITES
-        case GNRC_NETTYPE_TEST:
-            printf("NETTYPE_TEST (%i)\n", pkt->type);
-            //od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);
-            break;
-#endif
-        default:
-            printf("NETTYPE_UNKNOWN (%i)\n", pkt->type);
-            //od_hex_dump(pkt->data, pkt->size, OD_WIDTH_DEFAULT);
-            break;
-    }
-}
-
 static int _receive(gnrc_pktsnip_t* pkt)
 {
     //gnrc_pktsnip_t *snip = pkt;
@@ -97,6 +43,10 @@ static int _receive(gnrc_pktsnip_t* pkt)
     if( snip != NULL && snip->type == GNRC_NETTYPE_UDP) {
         puts("udp snip\n");
     }
+    
+    udp_hdr_t* hdr = (udp_hdr_t*)snip->data;
+    printf("udp size: %d\n", hdr->length);
+    
     
     if( snip != NULL && snip->type == GNRC_NETTYPE_UDP) {
         printf("payload snip: %d Bytes\n", snip->size);
@@ -108,21 +58,6 @@ static int _receive(gnrc_pktsnip_t* pkt)
             printf("%02x ", ((uint8_t*)(snip->data))[i]);
         }
     }
-
- int snips = 0;
-    int size = 0;
-
-
-    while (snip != NULL) {
-        printf("~~ SNIP %2i - size: %3u byte, type: ", snips,
-               (unsigned int)snip->size);
-        _dump_snip(snip);
-        ++snips;
-        size += snip->size;
-        snip = snip->next;
-    }
-
-    printf("~~ PKT    - %2i snips, total size: %3i byte\n", snips, size);
     
     gnrc_pktbuf_release(pkt);
     return 0;

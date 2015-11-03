@@ -14,6 +14,11 @@
  * @author  Martin Landsmann <martin.landsmann@haw-hamburg.de>
  */
 
+#include "kernel.h"
+#include "net/gnrc/ipv6.h"
+#include "net/gnrc/udp.h"
+#include "net/gnrc/dsr/data_types.h"
+#include "net/gnrc/dsr/tables.h"
 #include "net/gnrc/dsr/basic_functions.h"
 
 #define ENABLE_DEBUG    (0)

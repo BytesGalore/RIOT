@@ -24,11 +24,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "kernel.h"
-#include "net/gnrc/ipv6.h"
-#include "net/gnrc/udp.h"
-#include "net/gnrc/dsr/data_types.h"
-#include "net/gnrc/dsr/tables.h"
+
 //#include "net/gnrc/dsr.h" // not present yet
 
 void dsr_construct_opt_rreq( void );

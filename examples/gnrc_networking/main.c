@@ -39,7 +39,7 @@ int dsr(int argc, char **argv){
 int dsr_udp(int argc, char **argv){
     (void)argc;
     (void)argv;
-    dsr_construct_opt_rreq();
+    dsr_start_listener();
     return 0;
 }
 

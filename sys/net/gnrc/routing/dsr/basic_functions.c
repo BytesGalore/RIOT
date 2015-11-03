@@ -38,8 +38,8 @@ static char _stack[THREAD_STACKSIZE_MAIN];
 
 static int _receive(gnrc_pktsnip_t* pkt)
 {
-    gnrc_pktsnip_t *snip = pkt;
-
+    //gnrc_pktsnip_t *snip = pkt;
+/*
     if( snip != NULL && snip->type == GNRC_NETTYPE_UDP) {
         puts("udp snip\n");
         snip = snip->next;
@@ -55,7 +55,21 @@ static int _receive(gnrc_pktsnip_t* pkt)
             printf("%02x ", ((uint8_t*)(snip->data))[i]);
         }
     }
+*/
+ int snips = 0;
+    int size = 0;
+    gnrc_pktsnip_t *snip = pkt;
 
+    while (snip != NULL) {
+        printf("~~ SNIP %2i - size: %3u byte, type: ", snips,
+               (unsigned int)snip->size);
+        _dump_snip(snip);
+        ++snips;
+        size += snip->size;
+        snip = snip->next;
+    }
+
+    printf("~~ PKT    - %2i snips, total size: %3i byte\n", snips, size);
     
     gnrc_pktbuf_release(pkt);
     return 0;

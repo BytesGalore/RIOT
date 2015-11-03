@@ -36,6 +36,24 @@ static kernel_pid_t _pid = KERNEL_PID_UNDEF;
  */
 static char _stack[THREAD_STACKSIZE_MAIN];
 
+
+
+static void print_dsr_head(dsr_opt_hdr_t* hdr)
+{
+    printf("size: %d\n", sizeof(*hdr));
+    printf("Next Header %x\n", hdr->next_header);
+    printf("flags %x\n", hdr->flags.flow_state);
+    printf("payload length %d\n", hdr->payload_length);
+}
+
+static void print_dsr_opt_rreq(dsr_route_request_option_t* rreq)
+{
+    printf("size: %d\n", sizeof(*rreq));
+    printf("type %d\n", rreq->opt_type);
+    printf("opt_data_length %d\n", rreq->opt_data_length);
+    printf("identification %d\n", rreq->identification);
+}
+
 static int _receive(gnrc_pktsnip_t* pkt)
 {
     //gnrc_pktsnip_t *snip = pkt;
@@ -47,7 +65,9 @@ static int _receive(gnrc_pktsnip_t* pkt)
     udp_hdr_t* hdr = (udp_hdr_t*)snip->data;
     printf("udp size: %d\n", byteorder_ntohs(hdr->length));
     
+    dsr_opt_hdr_t* dsr_hdr = (dsr_opt_hdr_t*)(snip->data + sizeof(dsr_opt_hdr_t));
     
+    print_dsr_head(dsr_hdr);
     if( snip != NULL && snip->type == GNRC_NETTYPE_UDP) {
         printf("payload snip: %d Bytes\n", snip->size);
         for( size_t i = 0; i < snip->size; ++i) {
@@ -112,21 +132,7 @@ void dsr_start_listener(void)
                         CREATE_STACKTEST, _event_loop, NULL, "DSR");
 }
 
-static void print_dsr_head(dsr_opt_hdr_t* hdr)
-{
-    printf("size: %d\n", sizeof(*hdr));
-    printf("Next Header %x\n", hdr->next_header);
-    printf("flags %x\n", hdr->flags.flow_state);
-    printf("payload length %d\n", hdr->payload_length);
-}
 
-static void print_dsr_opt_rreq(dsr_route_request_option_t* rreq)
-{
-    printf("size: %d\n", sizeof(*rreq));
-    printf("type %d\n", rreq->opt_type);
-    printf("opt_data_length %d\n", rreq->opt_data_length);
-    printf("identification %d\n", rreq->identification);
-}
 
 void dsr_construct_opt_rreq( void ) {
     

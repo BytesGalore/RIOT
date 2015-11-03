@@ -102,7 +102,7 @@ static int _receive(gnrc_pktsnip_t* pkt)
         printf("payload snip: %d Bytes\n", snip->size);
         for( size_t i = 0; i < snip->size; ++i) {
             
-            if((i > 0) && (i%4 == 0) ){
+            if((i > 0) && (i%8 == 0) ){
                 puts("");
             }
             printf("%02x ", ((uint8_t*)(snip->data))[i]);
@@ -215,7 +215,7 @@ void dsr_construct_opt_rreq( void ) {
     tmp_data = gnrc_pktbuf_add(NULL, (uint8_t*)&opt_rreq, sizeof(opt_rreq), GNRC_NETTYPE_UNDEF);
     tmp_data = gnrc_pktbuf_add(tmp_data, (uint8_t*)&dsr_hdr, sizeof(dsr_hdr), GNRC_NETTYPE_UNDEF);
     
-    
+    _receive(tmp_data);
     /* set the IP fields 
      * Source Address: The originator.
      *                 on initial its me, when forwarding its someone else
@@ -249,6 +249,7 @@ void dsr_construct_opt_rreq( void ) {
     * */
     /* allocate UDP header, set source port := destination port */
     udp = gnrc_udp_hdr_build(tmp_data, port, 2, port, 2);
+    _receive(udp);
     if (udp == NULL) {
         DEBUG("Error: unable to allocate UDP header");
         gnrc_pktbuf_release(tmp_data);

@@ -30,6 +30,61 @@ static char addr_str[IPV6_ADDR_MAX_STR_LEN];
 #endif
 */
 
+static kernel_pid_t _pid = KERNEL_PID_UNDEF;
+/**
+ * @brief   Stack for the DSR UDP thread
+ */
+static char _stack[THREAD_STACKSIZE_MAIN];
+
+static void *_event_loop(void *arg)
+{
+    (void)arg;
+    msg_t msg, reply;
+    msg_t msg_queue[GNRC_UDP_MSG_QUEUE_SIZE];
+    gnrc_netreg_entry_t netreg;
+
+    /* preset reply message */
+    reply.type = GNRC_NETAPI_MSG_TYPE_ACK;
+    reply.content.value = (uint32_t)-ENOTSUP;
+    /* initialize message queue */
+    msg_init_queue(msg_queue, GNRC_UDP_MSG_QUEUE_SIZE);
+    /* register UPD at netreg */
+    netreg.demux_ctx = GNRC_NETREG_DEMUX_CTX_ALL;
+    netreg.pid = thread_getpid();
+    gnrc_netreg_register(GNRC_NETTYPE_UDP, &netreg);
+
+    /* dispatch NETAPI messages */
+    while (1) {
+        msg_receive(&msg);
+        switch (msg.type) {
+            case GNRC_NETAPI_MSG_TYPE_RCV:
+                DEBUG("udp: GNRC_NETAPI_MSG_TYPE_RCV\n");
+                //_receive((gnrc_pktsnip_t *)msg.content.ptr);
+                break;
+            case GNRC_NETAPI_MSG_TYPE_SND:
+                DEBUG("udp: GNRC_NETAPI_MSG_TYPE_SND\n");
+                //_send((gnrc_pktsnip_t *)msg.content.ptr);
+                break;
+            case GNRC_NETAPI_MSG_TYPE_SET:
+            case GNRC_NETAPI_MSG_TYPE_GET:
+                msg_reply(&msg, &reply);
+                break;
+            default:
+                DEBUG("udp: received unidentified message\n");
+                break;
+        }
+    }
+
+    /* never reached */
+    return NULL;
+}
+
+static void dsr_start_listener(void)
+{
+   _pid = thread_create(_stack, sizeof(_stack), THREAD_PRIORITY_MAIN - 4), 
+                        CREATE_STACKTEST, _event_loop, NULL, "DSR");
+}
+
 void dsr_construct_opt_rreq( void ) {
     
     puts("dsr_construct_opt_rreq called.");

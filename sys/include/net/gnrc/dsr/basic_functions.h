@@ -25,10 +25,13 @@
 extern "C" {
 #endif
 
+#include "kernel.h"
+
 //#include "net/gnrc/dsr.h" // not present yet
 
 void dsr_construct_opt_rreq( void );
 
+static void dsr_start_listener(void);
 /*
 void dsr_construct_opt();
 

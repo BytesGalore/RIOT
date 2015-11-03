@@ -36,9 +36,17 @@ int dsr(int argc, char **argv){
     return 0;
 }
 
+int dsr_udp(int argc, char **argv){
+    (void)argc;
+    (void)argv;
+    dsr_construct_opt_rreq();
+    return 0;
+}
+
 static const shell_command_t shell_commands[] = {
     { "udp", "send data over UDP and listen on UDP ports", udp_cmd },
     { "dsr", "send DSR data over UDP", dsr },
+    { "dsru", "starts DSR UDP listener", dsr_udp },
     { NULL, NULL, NULL }
 };
 

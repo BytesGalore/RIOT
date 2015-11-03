@@ -36,6 +36,41 @@ static kernel_pid_t _pid = KERNEL_PID_UNDEF;
  */
 static char _stack[THREAD_STACKSIZE_MAIN];
 
+static _receive(gnrc_pktsnip_t* pkt)
+{
+    int snips = 0;
+    int size = 0;
+    gnrc_pktsnip_t *snip = pkt;
+
+    if( snip != NULL && snip->type == GNRC_NETTYPE_UDP) {
+        uts("udp snip\n");
+        snip = snip->next;
+    }
+    
+    if( snip != NULL && snip->type == GNRC_NETTYPE_UNDEF) {
+        printf("payload snip: %d Bytes\n", snip->size);
+        for( size_t i = 0; i < snip->size; ++i) {
+            
+            if((i > 0) && (i%4 == 0) ){
+                puts("");
+            }
+            printf("%02x ", snip->data[i]);
+        }
+    }
+
+    while (snip != NULL) {
+        printf("~~ SNIP %2i - size: %3u byte, type: ", snips,
+               (unsigned int)snip->size);
+        _dump_snip(snip);
+        ++snips;
+        size += snip->size;
+        snip = snip->next;
+    }
+
+    printf("~~ PKT    - %2i snips, total size: %3i byte\n", snips, size);
+    gnrc_pktbuf_release(pkt);
+}
+
 static void *_event_loop(void *arg)
 {
     (void)arg;
@@ -49,7 +84,7 @@ static void *_event_loop(void *arg)
     /* initialize message queue */
     msg_init_queue(msg_queue, GNRC_UDP_MSG_QUEUE_SIZE);
     /* register UPD at netreg */
-    netreg.demux_ctx = 4711;//GNRC_NETREG_DEMUX_CTX_ALL;
+    netreg.demux_ctx = GNRC_NETREG_DEMUX_CTX_ALL;
     netreg.pid = thread_getpid();
     gnrc_netreg_register(GNRC_NETTYPE_UDP, &netreg);
 
@@ -59,7 +94,7 @@ static void *_event_loop(void *arg)
         switch (msg.type) {
             case GNRC_NETAPI_MSG_TYPE_RCV:
                 DEBUG("udp: GNRC_NETAPI_MSG_TYPE_RCV\n");
-                //_receive((gnrc_pktsnip_t *)msg.content.ptr);
+                _receive((gnrc_pktsnip_t *)msg.content.ptr);
                 break;
             case GNRC_NETAPI_MSG_TYPE_SND:
                 DEBUG("udp: GNRC_NETAPI_MSG_TYPE_SND\n");

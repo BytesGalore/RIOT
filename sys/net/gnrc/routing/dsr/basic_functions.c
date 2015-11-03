@@ -63,7 +63,7 @@ static int _receive(gnrc_pktsnip_t* pkt)
     }
     
     udp_hdr_t* hdr = (udp_hdr_t*)snip->data;
-    printf("udp size: %d\n", byteorder_ntohs(hdr->length));
+    printf("udp size: %d %d\n", byteorder_ntohs(hdr->length), sizeof(dsr_opt_hdr_t));
     
     dsr_opt_hdr_t* dsr_hdr = (dsr_opt_hdr_t*)(((uint8_t*)snip->data) + sizeof(dsr_opt_hdr_t));
     

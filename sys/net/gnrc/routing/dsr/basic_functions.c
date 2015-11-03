@@ -177,6 +177,20 @@ void dsr_start_listener(void)
                         CREATE_STACKTEST, _event_loop, NULL, "DSR");
 }
 
+static void print_dsr_head(dsr_opt_hdr_t* hdr)
+{
+    printf("Next Header %x\n", hdr->next_header);
+    printf("flags %x\n", hdr->flags.flow_state);
+    printf("payload length %d\n", hdr->payload_length);
+}
+
+static void print_dsr_opt_rreq(dsr_route_request_option_t* rreq)
+{
+    printf("type %d\n", rreq->opt_type);
+    printf("opt_data_length %d\n", rreq->opt_data_length);
+    printf("identification %d\n", rreq->identification);
+}
+
 void dsr_construct_opt_rreq( void ) {
     
     puts("dsr_construct_opt_rreq called.");
@@ -201,7 +215,10 @@ void dsr_construct_opt_rreq( void ) {
     
     /* total size is all plus 2 additional addresses */
     dsr_hdr.payload_length = sizeof(opt_rreq) + (16);
-
+    
+    print_dsr_head(&dsr_hdr);
+    print_dsr_opt_rreq(&opt_rreq);
+    
     uint32_t* as_number; 
     as_number = (uint32_t*)(&dsr_hdr);
     printf("%x\n", *as_number);

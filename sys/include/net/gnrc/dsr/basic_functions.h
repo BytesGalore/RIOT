@@ -31,6 +31,8 @@ extern "C" {
 #include "net/gnrc/dsr/tables.h"
 //#include "net/gnrc/dsr.h" // not present yet
 
+void dsr_construct_opt_rreq( void );
+
 /*
 void dsr_construct_opt();
 

@@ -51,8 +51,8 @@ void dsr_construct_opt_rreq( void ) {
     ipv6_addr_t hop2 = IPV6_ADDR_LOOPBACK; // 1
     
     gnrc_pktsnip_t *tmp_data;
-    tmp_data = gnrc_pktbuf_add(NULL, (uint8_t*)&hop1, sizeof(ipv6_addr_t), GNRC_NETTYPE_UNDEF);
-    tmp_data = gnrc_pktbuf_add(tmp_data, (uint8_t*)&hop2, sizeof(ipv6_addr_t), GNRC_NETTYPE_UNDEF);
+    tmp_data = gnrc_pktbuf_add(NULL, (uint8_t*)&hop2, sizeof(ipv6_addr_t), GNRC_NETTYPE_UNDEF);
+    tmp_data = gnrc_pktbuf_add(tmp_data, (uint8_t*)&hop1, sizeof(ipv6_addr_t), GNRC_NETTYPE_UNDEF);
     tmp_data = gnrc_pktbuf_add(tmp_data, (uint8_t*)&opt_rreq, sizeof(opt_rreq), GNRC_NETTYPE_UNDEF);
     tmp_data = gnrc_pktbuf_add(tmp_data, (uint8_t*)&dsr_hdr, sizeof(dsr_hdr), GNRC_NETTYPE_UNDEF);
     

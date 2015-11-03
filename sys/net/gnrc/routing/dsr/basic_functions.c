@@ -179,6 +179,7 @@ void dsr_start_listener(void)
 
 static void print_dsr_head(dsr_opt_hdr_t* hdr)
 {
+    printf("size: %d\n", sizeof(*hdr));
     printf("Next Header %x\n", hdr->next_header);
     printf("flags %x\n", hdr->flags.flow_state);
     printf("payload length %d\n", hdr->payload_length);
@@ -186,6 +187,7 @@ static void print_dsr_head(dsr_opt_hdr_t* hdr)
 
 static void print_dsr_opt_rreq(dsr_route_request_option_t* rreq)
 {
+    printf("size: %d\n", sizeof(*rreq);
     printf("type %d\n", rreq->opt_type);
     printf("opt_data_length %d\n", rreq->opt_data_length);
     printf("identification %d\n", rreq->identification);

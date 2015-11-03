@@ -21,7 +21,7 @@
 #include "net/gnrc/dsr/tables.h"
 #include "net/gnrc/dsr/basic_functions.h"
 
-#define ENABLE_DEBUG    (0)
+#define ENABLE_DEBUG    (1)
 #include "debug.h"
 
 #if ENABLE_DEBUG
@@ -30,6 +30,7 @@ static char addr_str[IPV6_ADDR_MAX_STR_LEN];
 
 void dsr_construct_opt_rreq( void ) {
     
+    puts("dsr_construct_opt_rreq called.");
     dsr_opt_hdr_t dsr_hdr;
     
     /* no header following */
@@ -114,7 +115,7 @@ void dsr_construct_opt_rreq( void ) {
         gnrc_pktbuf_release(ip);
         return;
     }
-
+    puts("dsr_construct_opt_rreq end.");
 }
 
 /**

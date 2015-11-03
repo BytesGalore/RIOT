@@ -117,7 +117,7 @@ static int _receive(gnrc_pktsnip_t* pkt)
     while (snip != NULL) {
         printf("~~ SNIP %2i - size: %3u byte, type: ", snips,
                (unsigned int)snip->size);
-        //_dump_snip(snip);
+        _dump_snip(snip);
         ++snips;
         size += snip->size;
         snip = snip->next;

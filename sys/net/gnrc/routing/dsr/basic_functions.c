@@ -49,7 +49,7 @@ static void *_event_loop(void *arg)
     /* initialize message queue */
     msg_init_queue(msg_queue, GNRC_UDP_MSG_QUEUE_SIZE);
     /* register UPD at netreg */
-    netreg.demux_ctx = GNRC_NETREG_DEMUX_CTX_ALL;
+    netreg.demux_ctx = 4711;//GNRC_NETREG_DEMUX_CTX_ALL;
     netreg.pid = thread_getpid();
     gnrc_netreg_register(GNRC_NETTYPE_UDP, &netreg);
 

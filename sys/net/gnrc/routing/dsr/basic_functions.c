@@ -54,7 +54,7 @@ static int _receive(gnrc_pktsnip_t* pkt)
             if((i > 0) && (i%4 == 0) ){
                 puts("");
             }
-            printf("%02x ", snip->data[i]);
+            printf("%02x ", (uint8_t*)(snip->data)[i]);
         }
     }
 

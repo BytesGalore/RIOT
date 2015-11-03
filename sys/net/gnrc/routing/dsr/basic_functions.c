@@ -187,7 +187,7 @@ static void print_dsr_head(dsr_opt_hdr_t* hdr)
 
 static void print_dsr_opt_rreq(dsr_route_request_option_t* rreq)
 {
-    printf("size: %d\n", sizeof(*rreq);
+    printf("size: %d\n", sizeof(*rreq));
     printf("type %d\n", rreq->opt_type);
     printf("opt_data_length %d\n", rreq->opt_data_length);
     printf("identification %d\n", rreq->identification);

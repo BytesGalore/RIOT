@@ -43,7 +43,7 @@ static _receive(gnrc_pktsnip_t* pkt)
     gnrc_pktsnip_t *snip = pkt;
 
     if( snip != NULL && snip->type == GNRC_NETTYPE_UDP) {
-        uts("udp snip\n");
+        puts("udp snip\n");
         snip = snip->next;
     }
     

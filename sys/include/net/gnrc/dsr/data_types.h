@@ -58,7 +58,7 @@ typedef struct{
         /** the flow label bit */
         uint8_t flow_state : 1;
         /** reserved unused bits MUST be 0 */
-        uint8_t reserved_bits : 7;
+        uint8_t reserved_bits;
     }flags;
     /** payload length (include all options excluding this header size) */
     uint16_t payload_length;

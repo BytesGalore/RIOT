@@ -199,7 +199,7 @@ void dsr_construct_opt_rreq( void ) {
     /* no header following */
     dsr_hdr.next_header = DSR_NO_NEXT_HEADER;
     /* no flow state */
-    dsr_hdr.flags = 0;
+    dsr_hdr.flags.all_bits = 0;
     //dsr_hdr.flags.reserved_bits = 0;
     /* we start with an empty header, i.e. no options */
     dsr_hdr.payload_length = 0;

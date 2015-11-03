@@ -93,13 +93,12 @@ static void _dump_snip(gnrc_pktsnip_t *pkt)
 static int _receive(gnrc_pktsnip_t* pkt)
 {
     //gnrc_pktsnip_t *snip = pkt;
-/*
+    gnrc_pktsnip_t *snip = pkt;
     if( snip != NULL && snip->type == GNRC_NETTYPE_UDP) {
         puts("udp snip\n");
-        snip = snip->next;
     }
     
-    if( snip != NULL && snip->type == GNRC_NETTYPE_UNDEF) {
+    if( snip != NULL && snip->type == GNRC_NETTYPE_UDP) {
         printf("payload snip: %d Bytes\n", snip->size);
         for( size_t i = 0; i < snip->size; ++i) {
             
@@ -109,10 +108,10 @@ static int _receive(gnrc_pktsnip_t* pkt)
             printf("%02x ", ((uint8_t*)(snip->data))[i]);
         }
     }
-*/
+
  int snips = 0;
     int size = 0;
-    gnrc_pktsnip_t *snip = pkt;
+
 
     while (snip != NULL) {
         printf("~~ SNIP %2i - size: %3u byte, type: ", snips,

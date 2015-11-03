@@ -68,7 +68,7 @@ typedef struct{
 /**
  * @brief Route Request Option
  */
-typedef struct{
+typedef struct __attribute__((packed)){
     /** option type */
     uint8_t opt_type;
     /** option data length excluding the Option Type and Opt Data Len fields

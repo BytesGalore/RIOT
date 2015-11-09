@@ -203,9 +203,9 @@ struct gnrc_rpl_dodag {
     ipv6_addr_t dodag_id;           /**< id of the DODAG */
     gnrc_rpl_parent_t *parents;     /**< pointer to the parents list of this DODAG */
     gnrc_rpl_instance_t *instance;  /**< pointer to the instance that this dodag is part of */
-    uint8_t prefix_len;             /**< length of the prefix for the DODAG id */
     uint32_t addr_preferred;        /**< time in seconds the DODAG id is preferred */
     uint32_t addr_valid;            /**< time in seconds the DODAG id is valid */
+    uint8_t prefix_len;             /**< length of the prefix for the DODAG id */
     uint8_t dtsn;                   /**< DAO Trigger Sequence Number */
     uint8_t prf;                    /**< preferred flag */
     uint8_t dio_interval_doubl;     /**< trickle Imax parameter */

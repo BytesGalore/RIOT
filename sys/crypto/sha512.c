@@ -78,7 +78,7 @@ static void be32enc_vect(void *dst_, const void *src_, size_t len)
  * of the first 80 primes
  * (same for sha256 but just 32 bits and sixty-four primes)
  */
-static const uint32_t K[80] = {
+static const uint64_t K[80] = {
     0x428a2f98d728ae22ULL, 0x7137449123ef65cdULL, 0xb5c0fbcfec4d3b2fULL,
     0xe9b5dba58189dbbcULL, 0x3956c25bf348b538ULL, 0x59f111f1b605d019ULL,
     0x923f82a4af194f9bULL, 0xab1c5ed5da6d8118ULL, 0xd807aa98a3030242ULL,

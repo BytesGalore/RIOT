@@ -29,19 +29,17 @@ static int calc_and_compare_hash(const char *str, const char *expected)
 
 static void test_crypto_sha512_hash_sequence(void)
 {
-    /*
     TEST_ASSERT(calc_and_compare_hash("1234567890_1",
-                 "3eda9ffe5537a588f54d0b2a453e5fa932986d0bc0f9556924f5c2379b2c91b0"));
+                 "0f3e840daba378160173034567d6fa7373056634834c7127399871f6175ff9f5c09cb0d1af35679de6b5893ab7c800a46f121821414f4cf11c27e67630e10e99"));
     TEST_ASSERT(calc_and_compare_hash("1234567890_2",
-                 "a144d0b4d285260ebbbab6840baceaa09eab3e157443c9458de764b7262c8ace"));
+                 "448e45902091177d01a402e1d31d0852899c48eaa2b331868b91afbec39a2a3413145f565336004055bbc05cfdc862732bf002bf90bc3f941ed7f6bcbc19bdc9"));
     TEST_ASSERT(calc_and_compare_hash("1234567890_3",
-                 "9f839169d293276d1b799707d2171ac1fd5b78d0f3bc7693dbed831524dd2d77"));
+                 "bc92bfae4d2b2e40371e543e0b70033ca1d308e01452fcc5678ac7b20b254b09159290166e5c1f4012d5295e2057dc202a4c42bf7d4cb7229f28c5bcf18e655f"));
     TEST_ASSERT(calc_and_compare_hash("1234567890_4",
-                 "6c5fe2a8e3de58a5e5ac061031a8e802ae1fb9e7197862ec1aedf236f0e23475"));
+                 "e9a43cf81972a22e85f1dca0b3be0b71f07ef30778ddf0eb5ae40e6d9ff1927db1d53c717f0cf43f1d99cfe360170a0a5885d2a85ac498be4f12405da4a8c79d"));
     TEST_ASSERT(calc_and_compare_hash(
                  "0123456789abcde-0123456789abcde-0123456789abcde-0123456789abcde-",
-                 "945ab9d52b069923680c2c067fa6092cbbd9234cf7a38628f3033b2d54d3d3bf"));
-                 */
+                 "f380afeb63f7d64018d89836c766a18f3cde99047a7fe183326d101ca9d9d4f9a5f03d77b6d542c66bcc9f46c766fe59a6a7dab300237b031a38600f463bb329"));
     TEST_ASSERT(calc_and_compare_hash(
                  "Franz jagt im komplett verwahrlosten Taxi quer durch Bayern",
                  "af9ed2de700433b803240a552b41b5a472a6ef3fe1431a722b2063c75e9f07451f67a28e37d09cde769424c96aea6f8971389db9e1993d6c565c3c71b855723c"));

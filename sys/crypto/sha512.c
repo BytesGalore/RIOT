@@ -249,7 +249,7 @@ void sha512_final(unsigned char digest[SHA512_DIGEST_LENGTH], sha512_context_t *
     sha512_pad(ctx);
 
     /* Write the hash */
-    be32enc_vect(digest, ctx->state, SHA512_DIGEST_LENGTH);
+    be32enc_vect(digest, ctx->buf, SHA512_DIGEST_LENGTH);
 
     /* Clear the context state */
     memset((void *) ctx, 0, sizeof(*ctx));

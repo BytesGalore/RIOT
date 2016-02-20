@@ -62,6 +62,13 @@ extern "C" {
 #define CC110X_MIN_CHANNR           (0)     /**< lowest possible channel number */
 #define CC110X_MAX_CHANNR           (0)     /**< highest possible channel number */
 
+#ifdef CC100X_DEFAULT_CHANNEL
+#if ((CC100X_DEFAULT_CHANNEL < CC110X_MIN_CHANNR)
+     || (CC100X_DEFAULT_CHANNEL > CC110X_MAX_CHANNR))
+    CC100X_DEFAULT_CHANNEL (0)
+#endif
+#endif
+
 /**
  * @name    State values for state machine
  * @{

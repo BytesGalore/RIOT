@@ -28,6 +28,28 @@
 #define ENABLE_DEBUG    (0)
 #include "debug.h"
 
+#ifdef MODULE_ROUTING_SEC_INTERFACES
+#include "rpl_sec_interfaces.h"
+/**
+ * @brief mutex to protect concurrent passing of DIOs to RPL.
+ *        This can happen when a security module perfoms
+ *        an asynchronous protection,
+ *        e.g. in TRAIL the path validation requires a certain amount
+ *        of communication before a path can be verified.
+ */
+mutex_t mtx_dio_process = MUTEX_INIT;
+/** macro to lock the receive DIO mutex */
+#define RPL_SEC_DIO_LOCK()   (mutex_lock(&mtx_dio_process))
+/** macro to unlock the receive DIO mutex */
+#define RPL_SEC_DIO_UNLOCK() (mutex_unlock(&mtx_dio_process))
+#else
+/** without using MODULE_ROUTING_SEC_INTERFACES we just do nothing */
+#define RPL_SEC_DIO_LOCK()
+/** without using MODULE_ROUTING_SEC_INTERFACES we just do nothing */
+#define RPL_SEC_DIO_UNLOCK()
+#endif
+
+
 #if ENABLE_DEBUG
 static char addr_str[IPV6_ADDR_MAX_STR_LEN];
 #endif
@@ -519,10 +541,12 @@ static bool _gnrc_rpl_check_DIO_validity(gnrc_rpl_dio_t *dio, uint16_t len)
 
 void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, kernel_pid_t iface, ipv6_addr_t *src, uint16_t len)
 {
+    RPL_SEC_DIO_LOCK();
     gnrc_rpl_instance_t *inst = NULL;
     gnrc_rpl_dodag_t *dodag = NULL;
 
     if (!_gnrc_rpl_check_DIO_validity(dio, len)) {
+        RPL_SEC_DIO_UNLOCK();
         return;
     }
 
@@ -534,6 +558,7 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, kernel_pid_t iface, ipv6_addr_t *src
         if (byteorder_ntohs(dio->rank) == GNRC_RPL_INFINITE_RANK) {
             DEBUG("RPL: ignore INFINITE_RANK DIO when we are not yet part of this DODAG\n");
             gnrc_rpl_instance_remove(inst);
+            RPL_SEC_DIO_UNLOCK();
             return;
         }
 
@@ -552,11 +577,19 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, kernel_pid_t iface, ipv6_addr_t *src
         DEBUG("RPL: Joined DODAG (%s).\n",
                ipv6_addr_to_str(addr_str, &dio->dodag_id, sizeof(addr_str)));
 
+#ifdef MODULE_ROUTING_SEC_INTERFACES
+        if(rpl_sec_if_verify_dio_parent(dio, src, len, dodag->my_rank) == false) {
+            RPL_SEC_DIO_UNLOCK();
+            return;
+        }
+#endif
+
         gnrc_rpl_parent_t *parent = NULL;
 
         if (!gnrc_rpl_parent_add_by_addr(dodag, src, &parent) && (parent == NULL)) {
             DEBUG("RPL: Could not allocate new parent.\n");
             gnrc_rpl_instance_remove(inst);
+            RPL_SEC_DIO_UNLOCK();
             return;
         }
 
@@ -571,6 +604,7 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, kernel_pid_t iface, ipv6_addr_t *src
                            src, &included_opts)) {
             DEBUG("RPL: Error encountered during DIO option parsing - remove DODAG\n");
             gnrc_rpl_instance_remove(inst);
+            RPL_SEC_DIO_UNLOCK();
             return;
         }
 
@@ -579,6 +613,7 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, kernel_pid_t iface, ipv6_addr_t *src
             DEBUG("RPL: DIO without DODAG_CONF option - remove DODAG and request new DIO\n");
             gnrc_rpl_instance_remove(inst);
             gnrc_rpl_send_DIS(NULL, src);
+            RPL_SEC_DIO_UNLOCK();
             return;
 #else
             DEBUG("RPL: DIO without DODAG_CONF option - use default trickle parameters\n");
@@ -611,10 +646,12 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, kernel_pid_t iface, ipv6_addr_t *src
                       dodag->dio_interval_doubl, dodag->dio_redun);
 
         gnrc_rpl_parent_update(dodag, parent);
+        RPL_SEC_DIO_UNLOCK();
         return;
     }
     else if (inst == NULL) {
         DEBUG("RPL: Could not allocate a new instance.\n");
+        RPL_SEC_DIO_UNLOCK();
         return;
     }
     else {
@@ -626,12 +663,20 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, kernel_pid_t iface, ipv6_addr_t *src
 
         if (memcmp(&dodag->dodag_id, &dio->dodag_id, sizeof(ipv6_addr_t)) != 0) {
             DEBUG("RPL: DIO received from another DODAG, but same instance - ignore\n");
+            RPL_SEC_DIO_UNLOCK();
             return;
         }
+#ifdef MODULE_ROUTING_SEC_INTERFACES
+        if(rpl_sec_if_verify_dio_parent(dio, src, len, dodag->my_rank) == false) {
+            RPL_SEC_DIO_UNLOCK();
+            return;
+        }
+#endif
     }
 
     if (inst->mop != ((dio->g_mop_prf >> GNRC_RPL_MOP_SHIFT) & GNRC_RPL_SHIFTED_MOP_MASK)) {
         DEBUG("RPL: invalid MOP for this instance.\n");
+        RPL_SEC_DIO_UNLOCK();
         return;
     }
 
@@ -647,6 +692,7 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, kernel_pid_t iface, ipv6_addr_t *src
     }
     else if (GNRC_RPL_COUNTER_GREATER_THAN(dodag->version, dio->version_number)) {
         trickle_reset_timer(&dodag->trickle);
+        RPL_SEC_DIO_UNLOCK();
         return;
     }
 
@@ -657,6 +703,7 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, kernel_pid_t iface, ipv6_addr_t *src
         else {
             trickle_reset_timer(&dodag->trickle);
         }
+        RPL_SEC_DIO_UNLOCK();
         return;
     }
 
@@ -684,6 +731,7 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, kernel_pid_t iface, ipv6_addr_t *src
         if ((byteorder_ntohs(dio->rank) == GNRC_RPL_INFINITE_RANK)
              && (dodag->my_rank != GNRC_RPL_INFINITE_RANK)) {
             trickle_reset_timer(&dodag->trickle);
+            RPL_SEC_DIO_UNLOCK();
             return;
         }
     }
@@ -700,9 +748,11 @@ void gnrc_rpl_recv_DIO(gnrc_rpl_dio_t *dio, kernel_pid_t iface, ipv6_addr_t *src
                            src, &included_opts)) {
             DEBUG("RPL: Error encountered during DIO option parsing - remove DODAG\n");
             gnrc_rpl_instance_remove(inst);
+            RPL_SEC_DIO_UNLOCK();
             return;
         }
     }
+    RPL_SEC_DIO_UNLOCK();
 }
 
 gnrc_pktsnip_t *_dao_target_build(gnrc_pktsnip_t *pkt, ipv6_addr_t *addr, uint8_t prefix_length)

@@ -2,6 +2,10 @@ ifneq (,$(filter nhdp,$(USEMODULE)))
     USEMODULE_INCLUDES += $(RIOTBASE)/sys/net/routing/nhdp
 endif
 
+ifneq (,$(filter routing_sec_interfaces,$(USEMODULE)))
+    USEMODULE_INCLUDES += $(RIOTBASE)/sys/net/routing/routing_sec_interfaces
+endif
+
 ifneq (,$(filter crypto,$(USEMODULE)))
     USEMODULE_INCLUDES += $(RIOTBASE)/include/crypto
 endif

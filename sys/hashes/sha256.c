@@ -51,31 +51,51 @@
 
 #ifdef __BIG_ENDIAN__
 /* Copy a vector of big-endian uint32_t into a vector of bytes */
-#define be32enc_vect memcpy
+#define be_enc_vect memcpy
 
 /* Copy a vector of bytes into a vector of big-endian uint32_t */
-#define be32dec_vect memcpy
+#define be_dec_vect memcpy
 
 #else /* !__BIG_ENDIAN__ */
 
 /*
- * Encode a length len/4 vector of (uint32_t) into a length len vector of
- * (unsigned char) in big-endian form.  Assumes len is a multiple of 4.
+ * Encode a length len/elem_size vector of elem_size into a length len vector of
+ * (unsigned char) in big-endian form.  Assumes len is a multiple of elem_size.
  */
-static void be32enc_vect(void *dst_, const void *src_, size_t len)
+static void be_enc_vect(void *dst_, const void *src_, size_t len, size_t elem_size)
 {
     uint32_t *dst = dst_;
     const uint32_t *src = src_;
-    for (size_t i = 0; i < len / 4; i++) {
-        dst[i] = __builtin_bswap32(src[i]);
+
+    switch (elem_size) {
+        case 2:
+            for (size_t i = 0; i < len / elem_size; i++) {
+                dst[i] = __builtin_bswap16(src[i]);
+            }
+        break;
+        case 4:
+            for (size_t i = 0; i < len / elem_size; i++) {
+                dst[i] = __builtin_bswap32(src[i]);
+            }
+        break;
+        case 8:
+            for (size_t i = 0; i < len / elem_size; i++) {
+                dst[i] = __builtin_bswap64(src[i]);
+            }
+        break;
+        /* other non aligned values are not handled (yet) */
+        default:
+            memcpy(dst_, src_, len);
+        break;
     }
+    
 }
 
 /*
  * Decode a big-endian length len vector of (unsigned char) into a length
- * len/4 vector of (uint32_t).  Assumes len is a multiple of 4.
+ * len/elem_size vector of elem_size.  Assumes len is a multiple of elem_size.
  */
-#define be32dec_vect be32enc_vect
+#define be_dec_vect be_enc_vect
 
 #endif /* __BYTE_ORDER__ != __ORDER_BIG_ENDIAN__ */
 
@@ -118,7 +138,7 @@ static void sha256_transform(uint32_t *state, const unsigned char block[64])
     uint32_t S[8];
 
     /* 1. Prepare message schedule W. */
-    be32dec_vect(W, block, 64);
+    be_dec_vect(W, block, 64, sizeof(uint32_t));
     for (int i = 16; i < 64; i++) {
         W[i] = s1(W[i - 2]) + W[i - 7] + s0(W[i - 15]) + W[i - 16];
     }
@@ -161,7 +181,7 @@ static void sha256_pad(sha256_context_t *ctx)
      * than later because the length will change after we pad.
      */
     unsigned char len[8];
-    be32enc_vect(len, ctx->count, 8);
+    be_enc_vect(len, ctx->count, 8, sizeof(uint32_t));
 
     /* Add 1--64 bytes so that the resulting length is 56 mod 64 */
     uint32_t r = (ctx->count[1] >> 3) & 0x3f;
@@ -241,7 +261,7 @@ void sha256_final(unsigned char digest[32], sha256_context_t *ctx)
     sha256_pad(ctx);
 
     /* Write the hash */
-    be32enc_vect(digest, ctx->state, 32);
+    be_enc_vect(digest, ctx->state, 32, sizeof(uint32_t));
 
     /* Clear the context state */
     memset((void *) ctx, 0, sizeof(*ctx));

@@ -124,7 +124,7 @@ static void sha512_transform(uint64_t *state, const unsigned char block[80])
     }
 
     /* 2. Initialize working variables. */
-    memcpy(S, state, 64);
+    memcpy(S, state, 8);
 
     /* 3. Mix. */
     for (int i = 0; i < 80; ++i) {
@@ -148,7 +148,7 @@ static void sha512_transform(uint64_t *state, const unsigned char block[80])
     }
 }
 
-static unsigned char PAD[80] = {
+static unsigned char PAD[128] = {
     0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -215,7 +215,7 @@ void sha512_update(sha512_context_t *ctx, const void *in, size_t len)
     ctx->count[0] += bitlen0;
 
     /* Handle the case where we don't need to perform any transforms */
-    if (len < 80 - r) {
+    if (len < 128 - r) {
         memcpy(&ctx->buf[r], in, len);
         return;
     }
@@ -223,16 +223,16 @@ void sha512_update(sha512_context_t *ctx, const void *in, size_t len)
     /* Finish the current block */
     const unsigned char *src = in;
 
-    memcpy(&ctx->buf[r], src, 80 - r);
+    memcpy(&ctx->buf[r], src, 128 - r);
     sha512_transform(ctx->state, ctx->buf);
-    src += 80 - r;
-    len -= 80 - r;
+    src += 128 - r;
+    len -= 128 - r;
 
     /* Perform complete blocks */
-    while (len >= 80) {
+    while (len >= 128) {
         sha512_transform(ctx->state, src);
-        src += 80;
-        len -= 80;
+        src += 128;
+        len -= 128;
     }
 
     /* Copy left over data into buffer */

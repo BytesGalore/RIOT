@@ -36,7 +36,7 @@ typedef struct {
     /** processed bytes counter */
     uint32_t count[2];
     /** buffer */
-    unsigned char buf[80];
+    unsigned char buf[128];
 } sha512_context_t;
 
 /**

@@ -23,7 +23,7 @@ static int calc_and_compare_hash(const char *str, const char *expected)
     sha512_init(&sha512);
     sha512_update(&sha512, str, strlen(str));
     sha512_final(hash, &sha512);
-
+    
     return strncmp((const char *) hash, expected, SHA512_DIGEST_LENGTH);
 }
 

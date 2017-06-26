@@ -97,8 +97,9 @@ kernel_pid_t gnrc_ipv6_init(void)
     return gnrc_ipv6_pid;
 }
 
-static void _dispatch_insert_ext_headers(gnrc_pktsnip_t *pkt)
+static bool _dispatch_insert_ext_headers(gnrc_pktsnip_t *pkt)
 {
+#ifdef MODULE_GNRC_IPV6_EXT
     DEBUG("ipv6: dispatch insertion of extension headers\n");
     uint8_t ext_demux[] = { PROTNUM_IPV6_EXT_HOPOPT
                           , PROTNUM_IPV6_EXT_RH
@@ -111,13 +112,13 @@ static void _dispatch_insert_ext_headers(gnrc_pktsnip_t *pkt)
     bool encapsulate = false;
 
     for ( size_t i = 0; i < sizeof(ext_demux); ++i ) {
-        gnrc_netreg_entry_t *call = gnrc_netreg_lookup(GNRC_NETAPI_MSG_TYPE_SND, ext_demux[i]);
+        gnrc_netreg_entry_t *call = gnrc_netreg_lookup(GNRC_NETTYPE_IPV6, ext_demux[i]);
         msg_t msg, rcv;
         msg.type = ext_demux[i];
 
         while (call) {
-            if (   ext_demux[i] == PROTNUM_IPV6_EXT_HOPOPT
-                || ext_demux[i] == PROTNUM_IPV6_EXT_RH ) {
+            if (!encapsulate && (ext_demux[i] == PROTNUM_IPV6_EXT_HOPOPT
+                || ext_demux[i] == PROTNUM_IPV6_EXT_RH) ) {
                 encapsulate = true;
             }
             msg.content.ptr = pkt;
@@ -134,10 +135,14 @@ static void _dispatch_insert_ext_headers(gnrc_pktsnip_t *pkt)
             if (pkt == NULL) {
                 /* revert but what do we now */
                 DEBUG("ipv6: dispatch insertion of extension headers, encapsulation Error!\n");
-                pkt = tmp;
+                return false;
             }
         }
     }
+#else
+    (void)pkt;
+#endif
+    return true;
 }
 
 static void _dispatch_next_header(gnrc_pktsnip_t *current, gnrc_pktsnip_t *pkt,
@@ -319,8 +324,10 @@ static void *_event_loop(void *args)
 
             case GNRC_NETAPI_MSG_TYPE_SND:
                 DEBUG("ipv6: GNRC_NETAPI_MSG_TYPE_SND received\n");
-                _dispatch_insert_ext_headers(msg.content.ptr);
-                _send(msg.content.ptr, true);
+                if(_dispatch_insert_ext_headers(msg.content.ptr)) {
+                    /* Only send if adding all extensions succeeded */
+                    _send(msg.content.ptr, true);
+                }
                 break;
 
             case GNRC_NETAPI_MSG_TYPE_GET:

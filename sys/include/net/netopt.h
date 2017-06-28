@@ -343,7 +343,7 @@ typedef enum {
      * @brief   Type for sequiential processing of IPv6 extension headers
      *
      * On GET it requests a thread to provide an extension header
-     *        and appends it to the the given (IPv6) header.
+     *        and prepends it to the given payload of the given (IPv6) packet.
      * On SET it always returns -ENOTSUP.
      *
      * When the header is done the thread replies to the call.

@@ -123,7 +123,7 @@ static bool _dispatch_insert_ext_headers(gnrc_pktsnip_t *pkt)
                                                    NETOPT_IPV6_EXT_HDR, ext_demux[i],
                                                    pkt, sizeof(gnrc_pktsnip_t *));
 
-            if (ret != -ENOSUP) {
+            if ( (ret != -ENOTSUP) && (ret != 0) ) {
                 gnrc_pktsnip_t *ext = (gnrc_pktsnip_t *)ret;
                 /* insert the extension header snip */
                 ipv6_hdr_t* hdr = gnrc_ipv6_get_header(pkt);

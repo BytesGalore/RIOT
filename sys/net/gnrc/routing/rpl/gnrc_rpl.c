@@ -387,7 +387,6 @@ static void *_event_loop(void *args)
                             break;
                     }
                 }
-            
                 break;
             }
             default:

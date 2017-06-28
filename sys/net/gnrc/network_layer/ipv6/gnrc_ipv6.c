@@ -119,11 +119,12 @@ static bool _dispatch_insert_ext_headers(gnrc_pktsnip_t *pkt)
                 || ext_demux[i] == PROTNUM_IPV6_EXT_RH) ) {
                 encapsulate = true;
             }
-            gnrc_pktsnip_t *data = pkt;
-            gnrc_netapi_get(call->target.pid, NETOPT_IPV6_EXT_HDR, ext_demux[i],
-                            data, sizeof(gnrc_pktsnip_t *));
+            int ret = gnrc_netapi_get(call->target.pid,
+                                                   NETOPT_IPV6_EXT_HDR, ext_demux[i],
+                                                   pkt, sizeof(gnrc_pktsnip_t *));
 
-            if (data) {
+            if (ret != -ENOSUP) {
+                gnrc_pktsnip_t *ext = (gnrc_pktsnip_t *)ret;
                 /* insert the extension header snip */
                 ipv6_hdr_t* hdr = gnrc_ipv6_get_header(pkt);
                 if (hdr && (pkt->data == (void *)hdr)) {
@@ -131,7 +132,7 @@ static bool _dispatch_insert_ext_headers(gnrc_pktsnip_t *pkt)
                      * i.e. in front of hdr->next.
                      * We bend hdr->next to point to ext.
                      */
-                    pkt->next = data;
+                    pkt->next = ext;
                 }
             }
             call = gnrc_netreg_getnext(call);

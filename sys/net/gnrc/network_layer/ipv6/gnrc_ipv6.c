@@ -113,16 +113,16 @@ static bool _dispatch_insert_ext_headers(gnrc_pktsnip_t *pkt)
 
     for ( size_t i = 0; i < sizeof(ext_demux); ++i ) {
         gnrc_netreg_entry_t *call = gnrc_netreg_lookup(GNRC_NETTYPE_IPV6, ext_demux[i]);
-        msg_t msg, rcv;
-        msg.type = ext_demux[i];
 
         while (call) {
             if (!encapsulate && (ext_demux[i] == PROTNUM_IPV6_EXT_HOPOPT
                 || ext_demux[i] == PROTNUM_IPV6_EXT_RH) ) {
                 encapsulate = true;
             }
-            msg.content.ptr = pkt;
-            msg_send_receive(&msg, &rcv, call->target.pid);
+            /* currently we don't care if an ext header has been inserted by the called thread */
+            gnrc_netapi_get(call->target.pid, NETOPT_IPV6_EXT_HDR, ext_demux[i],
+                            pkt, sizeof(gnrc_pktsnip_t *));
+
             call = gnrc_netreg_getnext(call);
         }
     }

@@ -339,6 +339,17 @@ typedef enum {
      * @brief   Enable/disable IQ inverted.
      */
     NETOPT_IQ_INVERT,
+    /**
+     * @brief   Type for sequiential processing of IPv6 extension headers
+     *
+     * On GET it requests a thread to insert an extension header.
+     * On SET it always returns -ENOTSUP.
+     *
+     * When inserting the header is done the thread replies to the call.
+     * The result is 1 if an extension header has been inserted.
+     * The result is 0 if no extension header has been inserted. 
+     */
+    NETOPT_IPV6_EXT_HDR,
 
     /* add more options if needed */
 

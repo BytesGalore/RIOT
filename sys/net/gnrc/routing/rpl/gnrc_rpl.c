@@ -329,16 +329,6 @@ static void *_event_loop(void *args)
         msg_receive(&msg);
 
         switch (msg.type) {
-            case PROTNUM_IPV6_EXT_HOPOPT:
-                DEBUG("RPL: call to add extension header received\n");
-                /* add our Hop-by-Hop extension header */
-                if (gnrc_pktsnip_search_type(msg.content.ptr, GNRC_NETTYPE_ICMPV6) == NULL) {
-                    /* but only if we send a dataplane packet */
-                    _handle_ext_hdr_insert(msg.content.ptr);
-                }
-                /* reply to allow others adding their extension headers */
-                msg_reply(&msg, &reply);
-                break;
             case GNRC_RPL_MSG_TYPE_LIFETIME_UPDATE:
                 DEBUG("RPL: GNRC_RPL_MSG_TYPE_LIFETIME_UPDATE received\n");
                 _update_lifetime();
@@ -366,12 +356,40 @@ static void *_event_loop(void *args)
                 break;
             case GNRC_NETAPI_MSG_TYPE_SND:
                 break;
-            case GNRC_NETAPI_MSG_TYPE_GET:
             case GNRC_NETAPI_MSG_TYPE_SET:
-                DEBUG("RPL: reply to unsupported get/set\n");
+                DEBUG("RPL: reply to unsupported set\n");
                 reply.content.value = -ENOTSUP;
                 msg_reply(&msg, &reply);
                 break;
+            case GNRC_NETAPI_MSG_TYPE_GET: {
+                gnrc_netapi_opt_t *o = (gnrc_netapi_opt_t*)msg.content.ptr;
+                if (o->opt == NETOPT_IPV6_EXT_HDR) {
+                    DEBUG("RPL: call to add extension header received\n");
+                    switch (o->context) {
+                        case PROTNUM_IPV6_EXT_HOPOPT:
+                            /* preinit that no extension has been inserted */
+                            reply.content.value = 0;
+                            if (gnrc_pktsnip_search_type(o->data,
+                                                         GNRC_NETTYPE_ICMPV6) == NULL) {
+                                /* but only if we send a dataplane packet */
+                                _handle_ext_hdr_insert(o->data);
+                                /* reply that we added an extension */
+                                reply.content.value = 1;
+                            }
+                            msg_reply(&msg, &reply);
+                            break;
+                        case PROTNUM_IPV6_EXT_RH:
+                            break;
+                        default:
+                            DEBUG("RPL: reply to unsupported context\n");
+                            reply.content.value = -ENOTSUP;
+                            msg_reply(&msg, &reply);
+                            break;
+                    }
+                }
+            
+                break;
+            }
             default:
                 break;
         }

@@ -342,12 +342,12 @@ typedef enum {
     /**
      * @brief   Type for sequiential processing of IPv6 extension headers
      *
-     * On GET it requests a thread to insert an extension header.
+     * On GET it requests a thread to provide an extension header.
      * On SET it always returns -ENOTSUP.
      *
-     * When inserting the header is done the thread replies to the call.
-     * The result is 1 if an extension header has been inserted.
-     * The result is 0 if no extension header has been inserted. 
+     * When the header is done the thread replies to the call.
+     * The result is the pktsnip_t with the extension header
+     * The result is NULL if no extension header is passed.
      */
     NETOPT_IPV6_EXT_HDR,
 

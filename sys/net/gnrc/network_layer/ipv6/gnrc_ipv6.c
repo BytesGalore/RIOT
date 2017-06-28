@@ -119,10 +119,21 @@ static bool _dispatch_insert_ext_headers(gnrc_pktsnip_t *pkt)
                 || ext_demux[i] == PROTNUM_IPV6_EXT_RH) ) {
                 encapsulate = true;
             }
-            /* currently we don't care if an ext header has been inserted by the called thread */
+            gnrc_pktsnip_t *data = pkt;
             gnrc_netapi_get(call->target.pid, NETOPT_IPV6_EXT_HDR, ext_demux[i],
-                            pkt, sizeof(gnrc_pktsnip_t *));
+                            data, sizeof(gnrc_pktsnip_t *));
 
+            if (data) {
+                /* insert the extension header snip */
+                ipv6_hdr_t* hdr = gnrc_ipv6_get_header(pkt);
+                if (hdr && (pkt->data == (void *)hdr)) {
+                    /* data has been placed just below the IPv6 Header,
+                     * i.e. in front of hdr->next.
+                     * We bend hdr->next to point to ext.
+                     */
+                    pkt->next = data;
+                }
+            }
             call = gnrc_netreg_getnext(call);
         }
     }

@@ -194,29 +194,31 @@ static void _handle_ext_hdr_process(gnrc_pktsnip_t *ext, msg_t *msg)
         ipv6_ext_t *ext_header = ext->data;
         gnrc_ipv6_ext_hdr_handle_t* content = (gnrc_ipv6_ext_hdr_handle_t*)msg->content.ptr;
         content->next_hdr = NULL;
-        content->nh_type = 0;
-        content->iface = KERNEL_PID_UNDEF;
+        content->nh_type = PROTNUM_RESERVED;
+
+        gnrc_pktsnip_t *netif = gnrc_pktsnip_search_type(content->current, GNRC_NETTYPE_NETIF);
+        content->iface = ((gnrc_netif_hdr_t *)netif->data)->if_pid;
 
         if (ext_header->nh == GNRC_RPL_HOP_OPT_TYPE) {
             gnrc_rpl_hop_opt_t *hop = (gnrc_rpl_hop_opt_t *)ext_header;
             int ret = gnrc_rpl_hop_opt_process(hop);
             switch (ret) {
-                case HOP_OPT_SUCCESS:
+                case HOP_OPT_ERR_NOT_FOR_ME:
+                /* we found the header is just not for us */
                 /* fallthrough intentionally */
-                case HOP_OPT_ERR_FLAG_R_SET: {
-                    /* we determined the first forwarding error and have set the R Flag */
-                    gnrc_pktsnip_t *netif = gnrc_pktsnip_search_type(content->current, GNRC_NETTYPE_NETIF);
-                    content->iface = ((gnrc_netif_hdr_t *)netif->data)->if_pid;
-
+                case HOP_OPT_ERR_HEADER_LENGTH:
+                /* something is broken with the extension -> ignore header, probably just not for us */
+                /* fallthrough intentionally */
+                case HOP_OPT_ERR_FLAG_R_SET:
+                /* we determined the first forwarding error and have set the R Flag */
+                /* fallthrough intentionally */
+                case HOP_OPT_SUCCESS: {
                     /* we check for more headers and let IPv6 demux them */
                     if ((ext->next) && ext->next->type == GNRC_NETTYPE_IPV6_EXT) {
                         content->next_hdr = ext->next;
                         content->nh_type = ((ipv6_ext_t*)ext->next->data)->nh;
                     }
-                    else {
-                        content->next_hdr = NULL;
-                        content->nh_type = 0;
-                    }
+
                     msg_send(msg, msg->sender_pid);
                     break;
                 }
@@ -230,19 +232,7 @@ static void _handle_ext_hdr_process(gnrc_pktsnip_t *ext, msg_t *msg)
                     // drop on non-storing
                     // TODO: keep track of original sender and count F errors
                     break;
-                case HOP_OPT_ERR_NOT_FOR_ME:
-                    /* we found the header is just not for us */
-                case HOP_OPT_ERR_HEADER_LENGTH:
-                    /* something is broken with the extension -> ignore header, probably just not for us */
-                    if ((ext->next) && ext->next->type == GNRC_NETTYPE_IPV6_EXT) {
-                        content->next_hdr = ext->next;
-                        content->nh_type = ((ipv6_ext_t*)ext->next->data)->nh;
 
-                        gnrc_pktsnip_t *netif = gnrc_pktsnip_search_type(content->current, GNRC_NETTYPE_NETIF);
-                        content->iface = ((gnrc_netif_hdr_t *)netif->data)->if_pid;
-                        msg_send(msg, msg->sender_pid);
-                    }
-                    break;
                 default:
                     break;
             }

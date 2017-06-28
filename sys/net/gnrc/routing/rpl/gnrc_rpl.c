@@ -137,12 +137,12 @@ gnrc_rpl_instance_t *gnrc_rpl_root_init(uint8_t instance_id, ipv6_addr_t *dodag_
     return inst;
 }
 
-static void _handle_ext_hdr_insert(gnrc_pktsnip_t *pkt)
+static gnrc_pktsnip_t * _handle_ext_hdr_insert(gnrc_pktsnip_t *pkt)
 {
     ipv6_hdr_t* hdr = gnrc_ipv6_get_header(pkt);
     /* get the ipv6 header to append the extensions */
     if (hdr == NULL) {
-        return;
+        return NULL;
     }
 
     for (uint8_t i = 0; i < GNRC_RPL_INSTANCES_NUMOF; ++i) {
@@ -180,13 +180,11 @@ static void _handle_ext_hdr_insert(gnrc_pktsnip_t *pkt)
                 gnrc_pktsnip_t* ext = gnrc_pktbuf_add(pkt->next, &ext_hdr,
                                                       sizeof(gnrc_ipv6_ext_hdr_handle_t),
                                                       GNRC_NETTYPE_UNDEF);
-                if (ext) {
-                    /* bend the pointers */
-                    pkt->next = ext;
-                }
+                return ext;
             }
         }
     }
+    return NULL;
 }
 
 static void _handle_ext_hdr_process(gnrc_pktsnip_t *ext, msg_t *msg)
@@ -367,14 +365,10 @@ static void *_event_loop(void *args)
                     DEBUG("RPL: call to add extension header received\n");
                     switch (o->context) {
                         case PROTNUM_IPV6_EXT_HOPOPT:
-                            /* preinit that no extension has been inserted */
-                            reply.content.value = 0;
+                            reply.content.ptr = NULL;
                             if (gnrc_pktsnip_search_type(o->data,
                                                          GNRC_NETTYPE_ICMPV6) == NULL) {
-                                /* but only if we send a dataplane packet */
-                                _handle_ext_hdr_insert(o->data);
-                                /* reply that we added an extension */
-                                reply.content.value = 1;
+                                reply.content.ptr = _handle_ext_hdr_insert(o->data);
                             }
                             msg_reply(&msg, &reply);
                             break;

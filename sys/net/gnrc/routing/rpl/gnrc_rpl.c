@@ -203,64 +203,23 @@ static void _handle_ext_hdr_process(gnrc_pktsnip_t *ext, msg_t *msg)
             switch (ret) {
                 case HOP_OPT_SUCCESS:
                 /* fallthrough intentionally */
-                case HOP_OPT_ERR_FLAG_R_SET:
+                case HOP_OPT_ERR_FLAG_R_SET: {
                     /* we determined the first forwarding error and have set the R Flag */
+                    gnrc_pktsnip_t *netif = gnrc_pktsnip_search_type(content->current, GNRC_NETTYPE_NETIF);
+                    content->iface = ((gnrc_netif_hdr_t *)netif->data)->if_pid;
+
                     /* we check for more headers and let IPv6 demux them */
                     if ((ext->next) && ext->next->type == GNRC_NETTYPE_IPV6_EXT) {
-
                         content->next_hdr = ext->next;
                         content->nh_type = ((ipv6_ext_t*)ext->next->data)->nh;
-
-                        gnrc_pktsnip_t *netif = gnrc_pktsnip_search_type(content->current, GNRC_NETTYPE_NETIF);
-                        content->iface = ((gnrc_netif_hdr_t *)netif->data)->if_pid;
                     }
                     else {
-                        /* done. no more headers to handle so we just forward the packet */
-                        gnrc_pktsnip_t *reversed_pkt = NULL, *ptr = content->current, *ipv6 = NULL;
-
-                        for (ipv6 = content->current; ipv6 != NULL; ipv6 = ipv6->next) { /* find IPv6 header if already marked */
-                                if ((ipv6->type == GNRC_NETTYPE_IPV6) && (ipv6->size == sizeof(ipv6_hdr_t)) &&
-                                    (ipv6_hdr_is(ipv6->data))) {
-                                    break;
-                                }
-                        }
-                        DEBUG("RPL: prepare to forward extended packet to next hop\n");
-
-                        /* pkt might not be writable yet, if header was given above */
-                        ipv6 = gnrc_pktbuf_start_write(ipv6);
-                        if (ipv6 == NULL) {
-                            DEBUG("RPL: unable to get write access to packet: dropping it\n");
-                            gnrc_pktbuf_release(content->current);
-                            return;
-                        }
-
-                        /* remove L2 headers around IPV6 */
-                        gnrc_pktsnip_t *netif = gnrc_pktsnip_search_type(content->current, GNRC_NETTYPE_NETIF);
-                        if (netif != NULL) {
-                            gnrc_pktbuf_remove_snip(content->current, netif);
-                        }
-
-                        /* reverse packet snip list order */
-                        while (ptr != NULL) {
-                            gnrc_pktsnip_t *next;
-                            ptr = gnrc_pktbuf_start_write(ptr);     /* duplicate if not already done */
-                            if (ptr == NULL) {
-                                DEBUG("RPL: unable to get write access to packet: dropping it\n");
-                                gnrc_pktbuf_release(reversed_pkt);
-                                gnrc_pktbuf_release(content->current);
-                                reversed_pkt = NULL;
-                                break;
-                            }
-                            next = ptr->next;
-                            ptr->next = reversed_pkt;
-                            reversed_pkt = ptr;
-                            ptr = next;
-                        }
-                        content->current = reversed_pkt;
+                        content->next_hdr = NULL;
+                        content->nh_type = 0;
                     }
                     msg_send(msg, msg->sender_pid);
-
                     break;
+                }
                 case HOP_OPT_ERR_INCONSISTENCY:
                     // we received a F Flag, process dependant on MOP
                     // drop on non-storing
@@ -383,7 +342,7 @@ static void *_event_loop(void *args)
             case PROTNUM_IPV6_EXT_HOPOPT:
                 DEBUG("RPL: call to add extension header received\n");
                 /* add our Hop-by-Hop extension header */
-                if (gnrc_pktsnip_search_type(pkt, GNRC_NETTYPE_ICMPV6) == NULL) {
+                if (gnrc_pktsnip_search_type(msg.content.ptr, GNRC_NETTYPE_ICMPV6) == NULL) {
                     /* but only if we send a dataplane packet */
                     _handle_ext_hdr_insert(msg.content.ptr);
                 }

@@ -79,6 +79,9 @@ static void *_event_loop(void *args);
 /* Handles encapsulated IPv6 packets: http://tools.ietf.org/html/rfc2473 */
 static void _decapsulate(gnrc_pktsnip_t *pkt);
 
+/* Helper to return the pktsnip containing the ipv6 header */
+static inline gnrc_pktsnip_t *_get_ipv6_hdr_snip(gnrc_pktsnip_t *pkt);
+
 kernel_pid_t gnrc_ipv6_init(void)
 {
     if (gnrc_ipv6_pid == KERNEL_PID_UNDEF) {
@@ -160,12 +163,7 @@ static gnrc_pktsnip_t* _reverse_pkt_for_forwarding(gnrc_pktsnip_t* pkt)
     /* prepare the given pkt to be forwarded further */
     gnrc_pktsnip_t *reversed_pkt = NULL, *ptr = pkt, *ipv6 = NULL;
 
-    for (ipv6 = pkt; ipv6 != NULL; ipv6 = ipv6->next) { /* find IPv6 header if already marked */
-            if ((ipv6->type == GNRC_NETTYPE_IPV6) && (ipv6->size == sizeof(ipv6_hdr_t)) &&
-                (ipv6_hdr_is(ipv6->data))) {
-                break;
-            }
-    }
+    ipv6 = _get_ipv6_hdr_snip(pkt);
     DEBUG("IPv6: prepare to forward extended packet to next hop\n");
 
     /* pkt might not be writable yet, if header was given above */
@@ -210,9 +208,17 @@ static void _dispatch_next_header(gnrc_pktsnip_t *current, gnrc_pktsnip_t *pkt,
  *         v                       v
  * IPv6 <- IPv6_EXT <- IPv6_EXT <- UNDEF
  */
-void gnrc_ipv6_demux(kernel_pid_t iface, gnrc_pktsnip_t *current, gnrc_pktsnip_t *pkt, uint8_t nh)
+void gnrc_ipv6_demux(kernel_pid_t iface,
+                     gnrc_pktsnip_t *current,
+                     gnrc_pktsnip_t *pkt,
+                     uint8_t nh,
+                     bool is_for_me)
 {
     bool interested = false;
+
+    if (!is_for_me && (nh != PROTNUM_IPV6_EXT_HOPOPT)) {
+        return;
+    }
 
     current->type = gnrc_nettype_from_protnum(nh);
 
@@ -293,7 +299,7 @@ void gnrc_ipv6_demux(kernel_pid_t iface, gnrc_pktsnip_t *current, gnrc_pktsnip_t
         case PROTNUM_IPV6_EXT_MOB:
             DEBUG("ipv6: handle extension header (nh = %u)\n", nh);
 
-            gnrc_ipv6_ext_demux(iface, current, pkt, nh);
+            gnrc_ipv6_ext_demux(iface, current, pkt, nh, is_for_me);
 
             return;
 #endif
@@ -361,6 +367,41 @@ static void _dispatch_next_header(gnrc_pktsnip_t *current, gnrc_pktsnip_t *pkt,
     }
 }
 
+static inline bool _pkt_not_for_me(kernel_pid_t *iface, ipv6_hdr_t *hdr)
+{
+    if (ipv6_addr_is_loopback(&hdr->dst)) {
+        return false;
+    }
+    else if ((!ipv6_addr_is_link_local(&hdr->dst)) ||
+             (*iface == KERNEL_PID_UNDEF)) {
+        kernel_pid_t if_pid = gnrc_ipv6_netif_find_by_addr(NULL, &hdr->dst);
+        if (*iface == KERNEL_PID_UNDEF) {
+            *iface = if_pid;    /* Use original interface for reply if
+                                 * existent */
+        }
+        return (if_pid == KERNEL_PID_UNDEF);
+    }
+    else {
+        return (gnrc_ipv6_netif_find_addr(*iface, &hdr->dst) == NULL);
+    }
+}
+
+static inline gnrc_pktsnip_t *_get_ipv6_hdr_snip(gnrc_pktsnip_t *pkt) {
+    if (pkt) {
+        for (gnrc_pktsnip_t* pkt_hdr = pkt;
+             pkt_hdr->next != NULL;
+             pkt_hdr = pkt_hdr->next) {
+
+            if ((pkt_hdr->type == GNRC_NETTYPE_IPV6)
+                && (pkt_hdr->size == sizeof(ipv6_hdr_t))
+                && (ipv6_hdr_is(pkt_hdr->data))) {
+                return pkt_hdr;
+            }
+        }
+    }
+    return NULL;
+}
+
 static void *_event_loop(void *args)
 {
     msg_t msg, reply, msg_q[GNRC_IPV6_MSG_QUEUE_SIZE];
@@ -407,7 +448,12 @@ static void *_event_loop(void *args)
                 gnrc_ipv6_ext_hdr_handle_t *handle = (gnrc_ipv6_ext_hdr_handle_t*)msg.content.ptr;
                 assert(handle->current);
 
-                gnrc_ipv6_demux(handle->iface, handle->current, handle->next_hdr, handle->nh_type);
+                gnrc_pktsnip_t* pkt_hdr = _get_ipv6_hdr_snip(handle->current);
+                bool is_for_me = !_pkt_not_for_me(&handle->iface, (ipv6_hdr_t*)pkt_hdr);
+
+                gnrc_ipv6_demux(handle->iface, handle->current,
+                                handle->next_hdr, handle->nh_type,
+                                is_for_me);
                 break;
 #endif
 #ifdef MODULE_GNRC_NDP
@@ -892,25 +938,6 @@ static void _send(gnrc_pktsnip_t *pkt, bool prep_hdr)
 }
 
 /* functions for receiving */
-static inline bool _pkt_not_for_me(kernel_pid_t *iface, ipv6_hdr_t *hdr)
-{
-    if (ipv6_addr_is_loopback(&hdr->dst)) {
-        return false;
-    }
-    else if ((!ipv6_addr_is_link_local(&hdr->dst)) ||
-             (*iface == KERNEL_PID_UNDEF)) {
-        kernel_pid_t if_pid = gnrc_ipv6_netif_find_by_addr(NULL, &hdr->dst);
-        if (*iface == KERNEL_PID_UNDEF) {
-            *iface = if_pid;    /* Use original interface for reply if
-                                 * existent */
-        }
-        return (if_pid == KERNEL_PID_UNDEF);
-    }
-    else {
-        return (gnrc_ipv6_netif_find_addr(*iface, &hdr->dst) == NULL);
-    }
-}
-
 static void _receive(gnrc_pktsnip_t *pkt)
 {
     kernel_pid_t iface = KERNEL_PID_UNDEF;
@@ -932,16 +959,8 @@ static void _receive(gnrc_pktsnip_t *pkt)
 #endif
     }
 
-    first_ext = pkt;
-
-    for (ipv6 = pkt; ipv6 != NULL; ipv6 = ipv6->next) { /* find IPv6 header if already marked */
-        if ((ipv6->type == GNRC_NETTYPE_IPV6) && (ipv6->size == sizeof(ipv6_hdr_t)) &&
-            (ipv6_hdr_is(ipv6->data))) {
-            break;
-        }
-
-        first_ext = ipv6;
-    }
+    ipv6 = _get_ipv6_hdr_snip(pkt);
+    first_ext = ipv6->next;
 
     if (ipv6 == NULL) {
         if (!ipv6_hdr_is(pkt->data)) {
@@ -1048,6 +1067,8 @@ static void _receive(gnrc_pktsnip_t *pkt)
             gnrc_pktbuf_release(pkt);
             return;
         }
+        /* Internal demuxing for Hop-by-Hop extension only */
+        gnrc_ipv6_demux(iface, first_ext, pkt, hdr->nh, false);
 #else  /* MODULE_GNRC_IPV6_ROUTER */
         DEBUG("ipv6: dropping packet\n");
         /* non rounting hosts just drop the packet */
@@ -1057,7 +1078,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
     }
 
     /* IPv6 internal demuxing (ICMPv6, Extension headers etc.) */
-    gnrc_ipv6_demux(iface, first_ext, pkt, hdr->nh);
+    gnrc_ipv6_demux(iface, first_ext, pkt, hdr->nh, true);
 }
 
 static void _decapsulate(gnrc_pktsnip_t *pkt)

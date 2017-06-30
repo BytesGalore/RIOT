@@ -100,7 +100,7 @@ kernel_pid_t gnrc_ipv6_init(void)
     return gnrc_ipv6_pid;
 }
 
-static bool _dispatch_insert_ext_headers(gnrc_pktsnip_t *pkt)
+static gnrc_pktsnip_t *_dispatch_insert_ext_headers(gnrc_pktsnip_t *pkt)
 {
 #ifdef MODULE_GNRC_IPV6_EXT
     DEBUG("ipv6: dispatch insertion of extension headers\n");
@@ -112,50 +112,51 @@ static bool _dispatch_insert_ext_headers(gnrc_pktsnip_t *pkt)
                           , PROTNUM_IPV6_EXT_DST
                           , PROTNUM_IPV6_EXT_MOB
                           };
-    bool encapsulate = false;
 
     for ( size_t i = 0; i < sizeof(ext_demux); ++i ) {
         gnrc_netreg_entry_t *call = gnrc_netreg_lookup(GNRC_NETTYPE_IPV6, ext_demux[i]);
 
         while (call) {
-            if (!encapsulate && (ext_demux[i] == PROTNUM_IPV6_EXT_HOPOPT
-                || ext_demux[i] == PROTNUM_IPV6_EXT_RH) ) {
-                encapsulate = true;
-            }
             int ret = gnrc_netapi_get(call->target.pid,
-                                                   NETOPT_IPV6_EXT_HDR, ext_demux[i],
-                                                   pkt, sizeof(gnrc_pktsnip_t *));
+                                      NETOPT_IPV6_EXT_HDR, ext_demux[i],
+                                      pkt, sizeof(gnrc_pktsnip_t *));
 
             if ( (ret != -ENOTSUP) && (ret != 0) ) {
                 gnrc_pktsnip_t *ext = (gnrc_pktsnip_t *)ret;
-                /* insert the extension header snip */
-                ipv6_hdr_t* hdr = gnrc_ipv6_get_header(pkt);
-                if (hdr && (pkt->data == (void *)hdr)) {
-                    /* data has been placed just below the IPv6 Header,
-                     * i.e. in front of hdr->next.
-                     * We bend hdr->next to point to ext.
+                if (ext->type == GNRC_NETTYPE_IPV6) {
+                    /* The handler encapsulated the packet already.
+                     * This may be the case when for instance a HBH option
+                     * can be only parsed by a specific hanlder, but the
+                     * packet will be forwarded to a node that cannot
+                     * understand the option.
                      */
-                    pkt->next = ext;
+
+                    /* all further extensions are appended to the outer packet*/
+                    pkt = ext;
                 }
+                else {
+                    /* insert the extension header snip */
+                    ipv6_hdr_t* hdr = gnrc_ipv6_get_header(pkt);
+                    if (hdr && (pkt->data == (void *)hdr)) {
+                        /* data has been placed just below the IPv6 Header,
+                         * i.e. in front of hdr->next.
+                         * We bend hdr->next to point to ext.
+                         */
+                        pkt->next = ext;
+                    }
+                }
+            }
+            else {
+                return NULL;
             }
             call = gnrc_netreg_getnext(call);
         }
     }
 
-    if (encapsulate) {
-        ipv6_hdr_t* hdr = gnrc_ipv6_get_header(pkt);
-        if (hdr) {
-            pkt = gnrc_ipv6_hdr_build(pkt, &hdr->src, &hdr->dst);
-            if (pkt == NULL) {
-                DEBUG("ipv6: dispatch insertion of extension headers, encapsulation Error!\n");
-                return false;
-            }
-        }
-    }
 #else
     (void)pkt;
 #endif
-    return true;
+    return pkt;
 }
 
 static gnrc_pktsnip_t* _reverse_pkt_for_forwarding(gnrc_pktsnip_t* pkt)
@@ -430,9 +431,10 @@ static void *_event_loop(void *args)
 
             case GNRC_NETAPI_MSG_TYPE_SND:
                 DEBUG("ipv6: GNRC_NETAPI_MSG_TYPE_SND received\n");
-                if(_dispatch_insert_ext_headers(msg.content.ptr)) {
+                gnrc_pktsnip_t* send = _dispatch_insert_ext_headers(msg.content.ptr);
+                if (send) {
                     /* Only send if adding all extensions succeeded */
-                    _send(msg.content.ptr, true);
+                    _send(send, true);
                 }
                 break;
 

@@ -145,43 +145,63 @@ static gnrc_pktsnip_t * _handle_ext_hdr_insert(gnrc_pktsnip_t *pkt)
         return NULL;
     }
 
+    /* determine if we know a next-hop */
+    kernel_pid_t fib_iface;
+    ipv6_addr_t next_hop;
+    size_t next_hop_size = sizeof(ipv6_addr_t);
+    uint32_t next_hop_flags;
+
+    int ret = fib_get_next_hop(&gnrc_ipv6_fib_table, &fib_iface,
+                               next_hop.u8, &next_hop_size,
+                               &next_hop_flags, hdr->dst.u8, next_hop_size,
+                               0);
+    if (ret != 0) {
+        /* we don't know a next-hop, and we have no default route set */
+        DEBUG("rpl: Error no next-hop available to forward the packet!\n");
+        return NULL;
+    }
+
     for (uint8_t i = 0; i < GNRC_RPL_INSTANCES_NUMOF; ++i) {
         /* check if the destination is in one of our DODAGs */
         gnrc_ipv6_netif_addr_t* prefix = gnrc_rpl_instances[i].dodag.netif_addr;
 
         if (ipv6_addr_match_prefix(&(prefix->addr), &(hdr->dst)) == prefix->prefix_len) {
-            /* determine the forwarding direction towards the destination */
-            kernel_pid_t fib_iface;
-            ipv6_addr_t next_hop;
-            size_t next_hop_size = sizeof(ipv6_addr_t);
-            uint32_t next_hop_flags;
+            /* This MUST only apply to a single DODAG.
+             * Otherwise we cannot rely on the routing. */
+            gnrc_rpl_hop_opt_t ext_hdr;
 
-            int ret = fib_get_next_hop(&gnrc_ipv6_fib_table, &fib_iface,
-                                       next_hop.u8, &next_hop_size,
-                                       &next_hop_flags, hdr->dst.u8, next_hop_size,
-                                       0);
-            if ( (ret == 0) && (next_hop_flags & FIB_FLAG_RPL_ROUTE) ) {
-                /* we know a next hop and it has been set by RPL */
-                gnrc_rpl_hop_opt_t ext_hdr;
+            ext_hdr.nh = GNRC_RPL_HOP_OPT_TYPE;
+            ext_hdr.len = (sizeof(gnrc_rpl_hop_opt_t) - 2);
+            /* set default propagation direction to upward */
+            ext_hdr.ORF_flags = GNRC_RPL_HOP_OPT_FLAG_O;
 
-                ext_hdr.nh = 0x63;
-                ext_hdr.len = (sizeof(gnrc_rpl_hop_opt_t) - 2);
-                /* set default propagation direction to upward */
-                ext_hdr.ORF_flags = GNRC_RPL_HOP_OPT_FLAG_O;
+            ext_hdr.instance_id = gnrc_rpl_instances[i].id;
+            ext_hdr.sender_rank = gnrc_rpl_instances[i].dodag.my_rank;
 
-                ext_hdr.instance_id = gnrc_rpl_instances[i].id;
-                ext_hdr.sender_rank = gnrc_rpl_instances[i].dodag.my_rank;
-
-                if ( !ipv6_addr_is_unspecified(&next_hop) ) {
-                    /* its a downward route entry so we clear the bit */
-                    ext_hdr.ORF_flags &= ~GNRC_RPL_HOP_OPT_FLAG_O;
-                }
-                /* append the extension below the IPv6 Header */
-                gnrc_pktsnip_t* ext = gnrc_pktbuf_add(pkt->next, &ext_hdr,
-                                                      sizeof(gnrc_ipv6_ext_hdr_handle_t),
-                                                      GNRC_NETTYPE_UNDEF);
-                return ext;
+            if ( !ipv6_addr_is_unspecified(&next_hop) ) {
+                /* its a downward route entry so we clear the bit */
+                ext_hdr.ORF_flags &= ~GNRC_RPL_HOP_OPT_FLAG_O;
             }
+            /* append the extension below the IPv6 Header */
+            gnrc_pktsnip_t* ext = gnrc_pktbuf_add(pkt->next, &ext_hdr,
+                                                  sizeof(gnrc_ipv6_ext_hdr_handle_t),
+                                                  GNRC_NETTYPE_UNDEF);
+
+            if ( !(next_hop_flags & FIB_FLAG_RPL_ROUTE) ) {
+                /* The packet will be forwarded to a ~Raf.
+                 * We need to encapsulate the extension since IPv6 isn't aware
+                 * how to handle it. */
+                ipv6_hdr_t* hdr = gnrc_ipv6_get_header(pkt);
+                if (hdr) {
+                    pkt = gnrc_ipv6_hdr_build(pkt, &hdr->src, &hdr->dst);
+                    if (pkt == NULL) {
+                        DEBUG("rpl: ~Raf encapsulation Error!\n");
+                        return NULL;
+                    }
+                    return pkt;
+                }
+            }
+            return ext;
         }
     }
     return NULL;

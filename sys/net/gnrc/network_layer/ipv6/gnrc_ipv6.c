@@ -963,6 +963,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
 #endif
     }
 
+    first_ext = pkt;
     ipv6 = _get_ipv6_hdr_snip(pkt, &first_ext);
 
     if (ipv6 == NULL) {
@@ -1073,6 +1074,7 @@ static void _receive(gnrc_pktsnip_t *pkt)
         }
         /* Internal demuxing for Hop-by-Hop extension only */
         gnrc_ipv6_demux(iface, first_ext, pkt, hdr->nh, false);
+        return;
 #else  /* MODULE_GNRC_IPV6_ROUTER */
         DEBUG("ipv6: dropping packet\n");
         /* non rounting hosts just drop the packet */

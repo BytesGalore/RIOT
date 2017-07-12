@@ -672,7 +672,12 @@ static int _fill_ipv6_hdr(kernel_pid_t iface, gnrc_pktsnip_t *ipv6,
     }
 
     DEBUG("ipv6: calculate checksum for upper header.\n");
-
+#ifdef MODULE_GNRC_IPV6_EXT
+    /* fast forward behind the extension headers */
+    while (payload && (payload->type == GNRC_NETTYPE_IPV6_EXT)) {
+        payload = payload->next;
+    }
+#endif
     if ((res = gnrc_netreg_calc_csum(payload, ipv6)) < 0) {
         if (res != -ENOENT) {   /* if there is no checksum we are okay */
             DEBUG("ipv6: checksum calculation failed.\n");

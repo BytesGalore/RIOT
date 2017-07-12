@@ -198,7 +198,7 @@ static gnrc_pktsnip_t* _reverse_pkt_for_forwarding(gnrc_pktsnip_t* pkt)
     return reversed_pkt;
 }
 
-static void _dispatch_next_header(gnrc_pktsnip_t *current, gnrc_pktsnip_t *pkt,
+static bool _dispatch_next_header(gnrc_pktsnip_t *current, gnrc_pktsnip_t *pkt,
                                   uint8_t nh, bool interested);
 
 /*
@@ -218,7 +218,6 @@ void gnrc_ipv6_demux(kernel_pid_t iface,
     if (!is_for_me && (nh != PROTNUM_IPV6_EXT_HOPOPT)) {
         return;
     }
-
     current->type = gnrc_nettype_from_protnum(nh);
 
     switch (nh) {
@@ -266,16 +265,18 @@ void gnrc_ipv6_demux(kernel_pid_t iface,
             break;
     }
 
-    _dispatch_next_header(current, pkt, nh, interested);
+    bool ongoing = _dispatch_next_header(current, pkt, nh, interested);
 
     if (!interested) {
 #ifdef MODULE_GNRC_IPV6_ROUTER
-        /* We are not interested in the header types,
-         * or all extensions are processed already.
-         * We forward the packet further. */
-        pkt = _reverse_pkt_for_forwarding(pkt);
-        if (pkt) {
-            _send(pkt, false);
+        if (!ongoing) {
+            /* We are not interested in the header types,
+             * or all extensions are processed already.
+             * We forward the packet further. */
+            pkt = _reverse_pkt_for_forwarding(pkt);
+            if (pkt) {
+                _send(pkt, false);
+            }
         }
 #endif
         return;
@@ -325,9 +326,10 @@ ipv6_hdr_t *gnrc_ipv6_get_header(gnrc_pktsnip_t *pkt)
 }
 
 /* internal functions */
-static void _dispatch_next_header(gnrc_pktsnip_t *current, gnrc_pktsnip_t *pkt,
+static bool _dispatch_next_header(gnrc_pktsnip_t *current, gnrc_pktsnip_t *pkt,
                                   uint8_t nh, bool interested)
 {
+    bool ret = true;
 #ifdef MODULE_GNRC_IPV6_EXT
     const bool should_dispatch_current_type = ((current->type != GNRC_NETTYPE_IPV6_EXT) ||
                                                (current->next->type == GNRC_NETTYPE_IPV6));
@@ -350,10 +352,11 @@ static void _dispatch_next_header(gnrc_pktsnip_t *current, gnrc_pktsnip_t *pkt,
                                          GNRC_NETREG_DEMUX_CTX_ALL,
                                          pkt) == 0) {
             gnrc_pktbuf_release(pkt);
+            ret = false;
         }
 
         if (should_release) {
-            return;
+            return ret;
         }
     }
     if (interested) {
@@ -362,7 +365,10 @@ static void _dispatch_next_header(gnrc_pktsnip_t *current, gnrc_pktsnip_t *pkt,
     }
     if (gnrc_netapi_dispatch_receive(GNRC_NETTYPE_IPV6, nh, pkt) == 0) {
         gnrc_pktbuf_release(pkt);
+        ret = false;
     }
+
+    return ret;
 }
 
 static inline bool _pkt_not_for_me(kernel_pid_t *iface, ipv6_hdr_t *hdr)

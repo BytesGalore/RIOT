@@ -165,13 +165,25 @@ static gnrc_pktsnip_t * _handle_ext_hdr_insert(gnrc_pktsnip_t *pkt)
         /* check if the destination is in one of our DODAGs */
         gnrc_ipv6_netif_addr_t* prefix = gnrc_rpl_instances[i].dodag.netif_addr;
 
-        if (ipv6_addr_match_prefix(&(prefix->addr), &(hdr->dst)) == prefix->prefix_len) {
+    size_t len = ipv6_addr_match_prefix(&(prefix->addr), &(hdr->dst));
+
+        if ( len >= prefix->prefix_len) {
             /* This MUST only apply to a single DODAG.
              * Otherwise we cannot rely on the routing. */
             gnrc_rpl_hop_opt_t ext_hdr;
 
-            ext_hdr.nh = GNRC_RPL_HOP_OPT_TYPE;
-            ext_hdr.len = (sizeof(gnrc_rpl_hop_opt_t) - 2);
+            ext_hdr.nh = gnrc_nettype_to_protnum(pkt->next->type);
+
+            /*
+             * https://tools.ietf.org/html/rfc2460#section-4.3
+             * 8-bit unsigned integer.  Length of the Hop-by-
+             * Hop Options header in 8-octet **units**, not
+             * including the first 8 octets.
+             */
+            ext_hdr.hbh_len = 0;
+
+            ext_hdr.type = GNRC_RPL_HOP_OPT_TYPE;
+            ext_hdr.len = (sizeof(gnrc_rpl_hop_opt_t) - 4);
             /* set default propagation direction to upward */
             ext_hdr.ORF_flags = GNRC_RPL_HOP_OPT_FLAG_O;
 
@@ -184,8 +196,10 @@ static gnrc_pktsnip_t * _handle_ext_hdr_insert(gnrc_pktsnip_t *pkt)
             }
             /* append the extension below the IPv6 Header */
             gnrc_pktsnip_t* ext = gnrc_pktbuf_add(pkt->next, &ext_hdr,
-                                                  sizeof(gnrc_ipv6_ext_hdr_handle_t),
-                                                  GNRC_NETTYPE_UNDEF);
+                                                  sizeof(gnrc_rpl_hop_opt_t),
+                                                  GNRC_NETTYPE_IPV6_EXT);
+
+            hdr->nh = PROTNUM_IPV6_EXT_HOPOPT;
 
             if ( !(next_hop_flags & FIB_FLAG_RPL_ROUTE) ) {
                 /* The packet will be forwarded to a ~Raf.

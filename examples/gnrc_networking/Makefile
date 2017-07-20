@@ -36,6 +36,7 @@ USEMODULE += netstats_ipv6
 USEMODULE += netstats_rpl
 USEMODULE += gnrc_ipv6_ext
 USEMODULE += gnrc_rpl_hop
+USEMODULE += gnrc_rpl_srh
 # Comment this out to disable code in RIOT that does safety checking
 # which is not needed in a production environment but helps in the
 # development process:

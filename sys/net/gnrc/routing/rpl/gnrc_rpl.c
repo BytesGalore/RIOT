@@ -282,6 +282,32 @@ static void _handle_ext_hbh_process(gnrc_pktsnip_t *ext, msg_t *msg)
 static gnrc_pktsnip_t * _handle_ext_srh_insert(gnrc_pktsnip_t *pkt)
 {
     (void)pkt;
+    ipv6_ext_t *ext_hdr;
+    gnrc_pktsnip_t* ext = gnrc_pktbuf_add(pkt->next, &ext_hdr, sizeof(gnrc_rpl_srh_t + address_verctor));
+    
+    
+
+/*
+ * - add RPL srh header plus srh addresses
+ *
+ * 
+ *ipv6_hdr_t hdr;
+    uint8_t buf[sizeof(gnrc_rpl_srh_t) + 2 * sizeof(ipv6_addr_t)] = { 0 };
+    int res;
+    gnrc_rpl_srh_t *srh = (gnrc_rpl_srh_t *) buf;
+    uint8_t *vec = (uint8_t *) (srh + 1);
+    ipv6_addr_t a1 = IPV6_ADDR1, a2 = IPV6_ADDR2, dst = IPV6_DST,
+                     expected1 = IPV6_ADDR1, expected2 = IPV6_ADDR2;
+
+    hdr.dst = dst;
+
+    srh->len = (2 * sizeof(ipv6_addr_t)) / 8;
+    srh->seg_left = SRH_SEG_LEFT;
+    memcpy(vec, &a1, sizeof(a1));
+    memcpy(vec + sizeof(a1), &a2, sizeof(a2));
+ * */
+
+    
     return NULL;
 }
 

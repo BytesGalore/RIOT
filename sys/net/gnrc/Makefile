@@ -88,6 +88,9 @@ endif
 ifneq (,$(filter gnrc_pktdump,$(USEMODULE)))
   DIRS += pktdump
 endif
+ifneq (,$(filter rpl_watchdog,$(USEMODULE)))
+  DIRS += routing/rpl/watchdog
+endif
 ifneq (,$(filter gnrc_rpl,$(USEMODULE)))
   DIRS += routing/rpl
 endif

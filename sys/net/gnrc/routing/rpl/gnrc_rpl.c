@@ -26,6 +26,10 @@
 #include "net/gnrc/rpl/p2p_dodag.h"
 #endif
 
+#ifdef MODULE_RPL_WATCHDOG
+#include "net/gnrc/rpl/watchdog/rpl_wd_dispatcher.h"
+#endif
+
 #define ENABLE_DEBUG    (0)
 #include "debug.h"
 
@@ -68,7 +72,12 @@ kernel_pid_t gnrc_rpl_init(kernel_pid_t if_pid)
         }
 
         _me_reg.demux_ctx = ICMPV6_RPL_CTRL;
+
+#ifdef MODULE_RPL_WATCHDOG
+        gnrc_rpl_pid = rpl_watchdog_init(gnrc_rpl_pid);
         _me_reg.target.pid = gnrc_rpl_pid;
+#endif
+
         /* register interest in all ICMPv6 packets */
         gnrc_netreg_register(GNRC_NETTYPE_ICMPV6, &_me_reg);
 
@@ -210,7 +219,7 @@ static void *_event_loop(void *args)
     while (1) {
         DEBUG("RPL: waiting for incoming message.\n");
         msg_receive(&msg);
-
+DEBUG("RPL: incoming message.\n");
         switch (msg.type) {
             case GNRC_RPL_MSG_TYPE_LIFETIME_UPDATE:
                 DEBUG("RPL: GNRC_RPL_MSG_TYPE_LIFETIME_UPDATE received\n");

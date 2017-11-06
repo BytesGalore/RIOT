@@ -106,6 +106,10 @@ ifneq (,$(filter gnrc_tftp,$(USEMODULE)))
   USEMODULE += xtimer
 endif
 
+ifneq (,$(filter rpl_watchdog,$(USEMODULE)))
+  USEMODULE += gnrc_rpl
+endif
+
 ifneq (,$(filter gnrc_rpl_p2p,$(USEMODULE)))
   USEMODULE += gnrc_rpl
 endif

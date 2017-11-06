@@ -21,6 +21,7 @@ USEMODULE += auto_init_gnrc_netif
 USEMODULE += gnrc_ipv6_router_default
 USEMODULE += gnrc_udp
 # Add a routing protocol
+USEMODULE += rpl_watchdog
 USEMODULE += gnrc_rpl
 USEMODULE += auto_init_gnrc_rpl
 # This application dumps received packets to STDIO using the pktdump module

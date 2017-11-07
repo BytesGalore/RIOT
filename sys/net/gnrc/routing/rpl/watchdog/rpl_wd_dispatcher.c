@@ -34,7 +34,8 @@ ipv6_addr_t *current_pkt_sender;
 kernel_pid_t current_incoming_iface;
 ipv6_addr_t *current_pkt_dst;
 
-rpl_watchdog_result_t rpl_wd_result_field;
+const uint8_t rpl_wd_result_field_size = (eENTRYCOUNT>>3) + 1;
+uint8_t* rpl_wd_result_field;
 
 #define GET_VARIABLE_NAME(Variable) (#Variable)
 
@@ -44,7 +45,7 @@ static void _prepare(void)
     current_incoming_iface = KERNEL_PID_UNDEF;
     current_pkt_dst = NULL;
 
-    rpl_wd_result_field = 0;
+    memset(rpl_wd_result_field, 0, rpl_wd_result_field_size);
 
     init_rules();
     register_rules();
@@ -59,7 +60,7 @@ kernel_pid_t rpl_watchdog_init(kernel_pid_t gnrc_rpl_pid)
     rpl_pid = gnrc_rpl_pid;
 
     _prepare();
-    
+    printf("sizeof(rpl_wd_result_field): %d\n", sizeof(rpl_wd_result_field));
     return rpl_watchdog_pid;
 }
 
@@ -71,7 +72,6 @@ static void _dispatch_timer_event(gnrc_pktsnip_t *pkt, uint16_t type)
 
 static void _print_result(void)
 {
-    printf("rpl_wd_result_field: %x\n", rpl_wd_result_field);
     for (size_t i = 0; i < (eENTRYCOUNT); ++i)
     {
         printf("[%2d]", i );
@@ -79,7 +79,7 @@ static void _print_result(void)
     puts("");
     for (size_t i = 0; i < (eENTRYCOUNT); ++i)
     {
-        printf(" %2d ", (rpl_wd_result_field >> i)&1 );
+        printf(" %2d ", (rpl_wd_result_field[(i/8)] & 1<<(i % 8)) != 0);
     }
     puts("");
 }
@@ -145,11 +145,13 @@ static void _dispatch_incoming_packet(gnrc_pktsnip_t *pkt)
             DEBUG("RPL WD: dispatch Unknown ICMPV6 code.\n");
             break;
     }
-_print_result();
+
+    _print_result();
+
     current_pkt_sender = NULL;
     current_incoming_iface = KERNEL_PID_UNDEF;
     current_pkt_dst = NULL;
-    rpl_wd_result_field = 0;
+    memset(rpl_wd_result_field, 0, rpl_wd_result_field_size);
 
 //    gnrc_pktbuf_release(pkt);
 }
@@ -158,6 +160,10 @@ static void *_event_loop(void *args)
 {
     msg_t msg, reply;
 
+    uint8_t result_field[rpl_wd_result_field_size];
+    rpl_wd_result_field = result_field;
+
+    printf("sizeof(result_field): %d\n", rpl_wd_result_field_size);
     (void)args;
     msg_init_queue(_msg_q, GNRC_RPL_WATCHDOG_MSG_QUEUE_SIZE);
 

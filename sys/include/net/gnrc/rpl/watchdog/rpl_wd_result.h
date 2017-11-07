@@ -74,17 +74,20 @@ typedef enum EBitCodes_t{
     eENTRYCOUNT
 }EBitCodes;
 
-#if (((eENTRYCOUNT+1)>>64) > 0)
-typedef uint64_t rpl_watchdog_result_t;
-#elif (((eENTRYCOUNT+1)>>32) > 0)
-typedef uint32_t rpl_watchdog_result_t;
-#elif (((eENTRYCOUNT+1)>>16) > 0)
-typedef uint16_t rpl_watchdog_result_t;
-#else
-typedef uint8_t rpl_watchdog_result_t;
-#endif
 
-extern rpl_watchdog_result_t rpl_wd_result_field;
+extern const uint8_t rpl_wd_result_field_size;
+extern uint8_t* rpl_wd_result_field;
+
+
+static inline void setbit(EBitCodes code)
+{
+    rpl_wd_result_field[(code/8)] |= 1<<(code % 8);
+}
+
+static inline bool getbit(EBitCodes code)
+{
+    return ((rpl_wd_result_field[(code/8)] & 1<<(code % 8)) != 0);
+}
 
 #ifdef __cplusplus
 }

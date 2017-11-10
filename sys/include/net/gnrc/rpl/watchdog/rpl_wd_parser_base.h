@@ -33,7 +33,7 @@ extern "C" {
 
 
 
-typedef struct stFilter_t {
+typedef struct {
     uint16_t code;
     union {
         int (*apply_dis)(gnrc_rpl_dis_t *pkt);
@@ -43,8 +43,6 @@ typedef struct stFilter_t {
     } func;
 }stRule;
 
-
-
 int add_rule(stRule* rule);
 int del_rule(stRule* rule);
 
@@ -52,7 +50,6 @@ stRule* get_next_typed_rule(uint16_t type, stRule* rule);
 stRule* get_next_rule(stRule* rule);
 
 void init_rules(void);
-
 
 #ifdef __cplusplus
 }

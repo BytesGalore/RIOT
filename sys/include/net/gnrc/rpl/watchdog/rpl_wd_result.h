@@ -40,6 +40,8 @@ typedef enum EBitCodes_t{
     eHBHOption,
 
     eTrickleReset,
+    eTrickleUpdateLifetimes,
+    eTrickleCallback,
     eParentSetPrune,
     eParentAdd,
     eParentDel,
@@ -74,19 +76,32 @@ typedef enum EBitCodes_t{
     eENTRYCOUNT
 }EBitCodes;
 
+extern const uint8_t rpl_wd_field_size;
+extern uint8_t* rpl_wd_idientification_field;
 
-extern const uint8_t rpl_wd_result_field_size;
-extern uint8_t* rpl_wd_result_field;
-
-
-static inline void setbit(EBitCodes code)
+static inline void setbit(EBitCodes code, uint8_t* filed)
 {
-    rpl_wd_result_field[(code/8)] |= 1<<(code % 8);
+    rpl_wd_idientification_field[(code/8)] |= 1<<(code % 8);
 }
 
-static inline bool getbit(EBitCodes code)
+static inline void clearbit(EBitCodes code, uint8_t* filed)
 {
-    return ((rpl_wd_result_field[(code/8)] & 1<<(code % 8)) != 0);
+    rpl_wd_idientification_field[(code/8)] &= ~(1<<(code % 8));
+}
+
+static inline bool getbit(EBitCodes code, uint8_t* filed)
+{
+    return ((rpl_wd_idientification_field[(code/8)] & 1<<(code % 8)) != 0);
+}
+
+static inline void setIdentificationBit(EBitCodes code)
+{
+    setbit(code, rpl_wd_idientification_field);
+}
+
+static inline bool getIdentificationBit(EBitCodes code)
+{
+    return getbit(code, rpl_wd_idientification_field);
 }
 
 #ifdef __cplusplus

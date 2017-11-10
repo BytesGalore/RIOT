@@ -18,8 +18,8 @@
  * @author      Martin Landsmann <martin.landsmann@haw-hamburg.de>
  */
 
-#ifndef NET_RPL_WATCHDOG_PROTECTOR_H
-#define NET_RPL_WATCHDOG_PROTECTOR_H
+#ifndef NET_RPL_WATCHDOG_PROTECTORS_H
+#define NET_RPL_WATCHDOG_PROTECTORS_H
 
 #include "rpl_wd_result.h"
 
@@ -27,9 +27,11 @@
 extern "C" {
 #endif
 
+void register_protectors(void);
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* NET_RPL_WATCHDOG_PROTECTOR_H */
+#endif /* NET_RPL_WATCHDOG_PROTECTORS_H */
 /** @} */

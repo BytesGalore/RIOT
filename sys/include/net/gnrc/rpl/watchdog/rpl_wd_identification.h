@@ -67,6 +67,10 @@ void rpl_wd_process_DAO_ACK(gnrc_rpl_dao_ack_t *dao_ack, uint16_t len);
  * @param[in] src       The source address of the IPv6 packet.
  */
 void rpl_wd_process_DRO(gnrc_pktsnip_t *pkt, ipv6_addr_t *src);
+
+
+void rpl_wd_timerevent()
+
 #endif
 
 #ifdef __cplusplus

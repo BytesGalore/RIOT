@@ -27,7 +27,7 @@
 extern "C" {
 #endif
 
-int register_rules(void);
+void register_rules(void);
 
 #ifdef __cplusplus
 }

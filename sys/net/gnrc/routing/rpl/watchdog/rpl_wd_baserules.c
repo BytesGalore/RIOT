@@ -26,41 +26,41 @@ static stRule daoACK_rule = { GNRC_RPL_ICMPV6_CODE_DAO_ACK, {NULL} };
 
 int parse_dio(gnrc_rpl_dio_t* dio)
 {
-    setbit(eDIOpkt);
+    setIdentificationBit(eDIOpkt);
     bool ImRoot = false;
     for (uint8_t i = 0; i < GNRC_RPL_INSTANCES_NUMOF; ++i) {
          if (gnrc_rpl_instances[i].state != 0) {
             if (gnrc_rpl_instances[i].id == dio->instance_id)
             {
-                setbit(eRPLMyInstance);
+                setIdentificationBit(eRPLMyInstance);
 
                 if (ipv6_addr_equal(&(dio->dodag_id), &(gnrc_rpl_instances[i].dodag.dodag_id)))
                 {
                     // DODAG Version Number
                     if (GNRC_RPL_COUNTER_GREATER_THAN(dio->version_number, gnrc_rpl_instances[i].dodag.version)) {
-                        setbit(eDODAGVersionRaise);
+                        setIdentificationBit(eDODAGVersionRaise);
                     }
                     
                     // Rank in DODAG
                     if (gnrc_rpl_instances[i].dodag.parents) {
                         
                         if (gnrc_rpl_instances[i].dodag.parents->rank > byteorder_ntohs(dio->rank)) {
-                            setbit(eRankRise);
-                            setbit(ePreferedParentExchange);
+                            setIdentificationBit(eRankRise);
+                            setIdentificationBit(ePreferedParentExchange);
                         }
                         // dtsn
                         gnrc_rpl_parent_t *elt, *tmp;
                         LL_FOREACH_SAFE(gnrc_rpl_instances[i].dodag.parents, elt, tmp) {
                             if (elt->dtsn > dio->dtsn) {
-                                setbit(eDTSNRaise);
+                                setIdentificationBit(eDTSNRaise);
                             } else if (elt->dtsn < dio->dtsn) {
                                 // provided DTSN is lower, i.e. inconsistent neighbour state
-                                setbit(eTrickleReset);
+                                setIdentificationBit(eTrickleReset);
                             }
                             
                             if (DAGRANK(gnrc_rpl_instances[i].dodag.my_rank, gnrc_rpl_instances[i].min_hop_rank_inc)
                             <= DAGRANK(elt->rank, gnrc_rpl_instances[i].min_hop_rank_inc)) {
-                                setbit(eParentDel);
+                                setIdentificationBit(eParentDel);
                             }
                         }
                     }
@@ -74,12 +74,12 @@ int parse_dio(gnrc_rpl_dio_t* dio)
             }
         }
     }
-    if (!getbit(eRPLMyInstance))
+    if (!getIdentificationBit(eRPLMyInstance))
     {
-        setbit(eRPLInstanceAdd);
+        setIdentificationBit(eRPLInstanceAdd);
         if (!ImRoot)
         {
-            setbit(eDAOParentAdd);
+            setIdentificationBit(eDAOParentAdd);
         }
     } 
     return 0;
@@ -101,7 +101,7 @@ int parse_dis(gnrc_rpl_dis_t* dis)
     
 // 
     
-    rpl_wd_result_field;
+    rpl_wd_idientification_field;
     
     dio->instance_id;
     dio->

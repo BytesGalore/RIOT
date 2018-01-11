@@ -21,7 +21,7 @@
 #include "debug.h"
 
 static void gethandled(uint8_t* handled)
-{
+{//puts("handled");
     setbit(eDIOpkt, handled);
     setbit(eParentAdd, handled);
     setbit(eParentSetPrune, handled);
@@ -39,15 +39,15 @@ static bool is_matching(void)
 {
     if (getIdentificationBit(eDISUnicast) || getIdentificationBit(eDISpkt))
     {
-        puts("matches");
+        //puts("matches");
         return true;
-    }
+    }//puts("no");
     return false;
 }
 
 static int apply(uint8_t* result)
 {
-    puts("apply");
+   // puts("apply");
 
     clearbit(eDIOpkt, result);
     

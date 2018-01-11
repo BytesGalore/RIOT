@@ -89,5 +89,6 @@ stRule* get_next_rule(stRule* rule)
 
 void init_rules(void)
 {
+    //printf("RPL_WD_MAX_RULES_COUNT*(sizeof(stRule): %d\n", RPL_WD_MAX_RULES_COUNT*(sizeof(stRule)));
     memset(&rules[0], 0, RPL_WD_MAX_RULES_COUNT*(sizeof(stRule)));
 }

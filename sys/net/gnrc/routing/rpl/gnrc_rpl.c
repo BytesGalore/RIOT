@@ -76,6 +76,7 @@ kernel_pid_t gnrc_rpl_init(kernel_pid_t if_pid)
 #ifdef MODULE_RPL_WATCHDOG
         gnrc_rpl_pid = rpl_watchdog_init(gnrc_rpl_pid);
         _me_reg.target.pid = gnrc_rpl_pid;
+        printf("GNRC_RPL_WATCHDOG_STACK_SIZE: %d\n", GNRC_RPL_WATCHDOG_STACK_SIZE);
 #endif
 
         /* register interest in all ICMPv6 packets */

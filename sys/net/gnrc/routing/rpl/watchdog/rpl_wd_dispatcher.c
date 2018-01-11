@@ -41,7 +41,7 @@ uint8_t* rpl_wd_idientification_field;
 
 uint8_t* rpl_wd_result_field;
 
-uint8_t* rpl_wd_unhandled_field;
+uint8_t* rpl_wd_handled_field;
 
 static void _prepare(void)
 {
@@ -59,6 +59,7 @@ static void _prepare(void)
 
 kernel_pid_t rpl_watchdog_init(kernel_pid_t gnrc_rpl_pid)
 {
+    //printf("rpl_wd_field_size: %d\n", rpl_wd_field_size);
     /* start the event loop */
     rpl_watchdog_pid = thread_create(_stack, sizeof(_stack), GNRC_RPL_WATCHDOG_PRIO,
                                      THREAD_CREATE_STACKTEST,
@@ -72,46 +73,66 @@ kernel_pid_t rpl_watchdog_init(kernel_pid_t gnrc_rpl_pid)
 static void _dispatch_timer_event(void *data, uint16_t type)
 {
     switch (type) {
-            case GNRC_RPL_MSG_TYPE_LIFETIME_UPDATE:
-                DEBUG("RPL: GNRC_RPL_MSG_TYPE_LIFETIME_UPDATE received\n");
-                setbit(eTrickleUpdateLifetimes);
-                break;
-            case GNRC_RPL_MSG_TYPE_TRICKLE_MSG:
-                DEBUG("RPL: GNRC_RPL_MSG_TYPE_TRICKLE_MSG received\n");
-                trickle_t *trickle = data;
-                if (trickle && (trickle->callback.func != NULL)) {
-                    if ((trickle->c < trickle->k) || (trickle->k == 0)) {
-                        setbit(eTrickleCallback);
-                    }
+        case GNRC_RPL_MSG_TYPE_LIFETIME_UPDATE:
+            DEBUG("RPL: GNRC_RPL_MSG_TYPE_LIFETIME_UPDATE received\n");
+            setIdentificationBit(eTrickleUpdateLifetimes);
+            break;
+        case GNRC_RPL_MSG_TYPE_TRICKLE_MSG:
+            DEBUG("RPL: GNRC_RPL_MSG_TYPE_TRICKLE_MSG received\n");
+            trickle_t *trickle = data;
+            if (trickle && (trickle->callback.func != NULL)) {
+                if ((trickle->c < trickle->k) || (trickle->k == 0)) {
+                    setIdentificationBit(eTrickleCallback);
                 }
-                break;
-            default:
-                break;
+            }
+            break;
+        default:
+            break;
     }
 }
 
 static void _print_result(void)
 {
+    /*
     for (size_t i = 0; i < (eENTRYCOUNT); ++i)
     {
         printf("[%2d]", i );
     }
     puts("");
+    */
+    /*
+    printf("IDT: ");
     for (size_t i = 0; i < (eENTRYCOUNT); ++i)
     {
-        printf(" %2d ", (rpl_wd_idientification_field[(i/8)] & 1<<(i % 8)) != 0);
+        printf("%d", (rpl_wd_idientification_field[(i/8)] & 1<<(i % 8)) != 0);
     }
     puts("");
+
+    printf("HDL: ");
+    for (size_t i = 0; i < (eENTRYCOUNT); ++i)
+    {
+        printf("%d", (rpl_wd_handled_field[(i/8)] & 1<<(i % 8)) != 0);
+    }
+    puts("");
+
+    printf("RES: ");
+    for (size_t i = 0; i < (eENTRYCOUNT); ++i)
+    {
+        printf("%d", (rpl_wd_result_field[(i/8)] & 1<<(i % 8)) != 0);
+    }
+    puts("\n");
+    */
 }
 
 static void _apply_protectors(void)
 {
+    
     memcpy(rpl_wd_result_field, rpl_wd_idientification_field, rpl_wd_field_size);
 
     stProtector_t* protector = get_next_protector(NULL);
     while (protector)
     {
-        protector->gethandled(rpl_wd_unhandled_field);
+        protector->gethandled(rpl_wd_handled_field);
 
         if(protector->is_matching())
         {
@@ -123,11 +144,9 @@ static void _apply_protectors(void)
     uint8_t tmp[rpl_wd_field_size];
     for (size_t i = 0; i < rpl_wd_field_size; ++i)
     {
-        tmp[i] = rpl_wd_idientification_field[i] & rpl_wd_unhandled_field[i];
+        tmp[i] = (rpl_wd_idientification_field[i] & rpl_wd_handled_field[i]) ^ (rpl_wd_idientification_field[i]);
+        rpl_wd_result_field[i] = ~tmp[i] & rpl_wd_result_field[i];
     }
-    
-    //handled bits rpl_wd_idientification_field & rpl_wd_unhandled_field
-    // unhandled bits 
 }
 
 static void _dispatch_incoming_packet(gnrc_pktsnip_t *pkt)
@@ -204,7 +223,7 @@ static void _dispatch_incoming_packet(gnrc_pktsnip_t *pkt)
 
     memset(rpl_wd_idientification_field, 0, rpl_wd_field_size);
     memset(rpl_wd_result_field, 0, rpl_wd_field_size);
-    memset(rpl_wd_unhandled_field, 0, rpl_wd_field_size);
+    memset(rpl_wd_handled_field, 0, rpl_wd_field_size);
 //    gnrc_pktbuf_release(pkt);
 }
 
@@ -219,8 +238,8 @@ static void *_event_loop(void *args)
     uint8_t result_field[rpl_wd_field_size];
     rpl_wd_result_field = result_field;
 
-    uint8_t unhandled_field[rpl_wd_field_size];
-    rpl_wd_unhandled_field = unhandled_field;
+    uint8_t handled_field[rpl_wd_field_size];
+    rpl_wd_handled_field = handled_field;
 
 
     msg_init_queue(_msg_q, GNRC_RPL_WATCHDOG_MSG_QUEUE_SIZE);

@@ -32,7 +32,7 @@ extern "C" {
 /**
  * @brief   Default stack size to use for the RPL watchdog thread
  */
-#define GNRC_RPL_WATCHDOG_STACK_SIZE     (THREAD_STACKSIZE_DEFAULT)
+#define GNRC_RPL_WATCHDOG_STACK_SIZE     (THREAD_STACKSIZE_DEFAULT>>1)
 
 /**
  * @brief   Default priority for the RPL watchdog thread

@@ -33,7 +33,7 @@ extern "C" {
 
 typedef struct {
     int (*init)(void);
-    void (*gethandled)(uint8_t* handled)
+    void (*gethandled)(uint8_t* handled);
     bool (*is_matching)(void);
     int (*apply)(uint8_t* result);
 }stProtector_t;

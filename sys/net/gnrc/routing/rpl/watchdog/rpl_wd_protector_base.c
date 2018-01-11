@@ -49,6 +49,7 @@ int del_protector(stProtector_t* protector)
 stProtector_t* get_next_protector(stProtector_t* protector)
 {
     bool found = (protector == NULL) ? true : false;
+
     for (int i = 0; i < (RPL_WD_MAX_PROTECTORS_COUNT); i++)
     {
         if (!found && (protector == protectors[i]))
@@ -58,7 +59,7 @@ stProtector_t* get_next_protector(stProtector_t* protector)
         }
 
         if (found && protectors[i] && (protectors[i]->is_matching()))
-        {
+        {puts("found");
             return protectors[i];
         }
     }
@@ -68,5 +69,6 @@ stProtector_t* get_next_protector(stProtector_t* protector)
 
 void init_protectors(void)
 {
+    //printf("RPL_WD_MAX_PROTECTORS_COUNT*(sizeof(stProtector_t): %d\n", RPL_WD_MAX_PROTECTORS_COUNT*(sizeof(stProtector_t)));
     memset(&protectors[0], 0, RPL_WD_MAX_PROTECTORS_COUNT*(sizeof(stProtector_t)));
 }

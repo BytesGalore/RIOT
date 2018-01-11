@@ -31,7 +31,7 @@ extern ipv6_addr_t *current_pkt_sender;
 extern kernel_pid_t current_incoming_iface;
 extern ipv6_addr_t *current_pkt_dst;
 
-typedef enum EBitCodes_t{
+typedef enum {
     eInvert = 0,
     eDIOpkt,
     eDISpkt,
@@ -81,17 +81,17 @@ extern uint8_t* rpl_wd_idientification_field;
 
 static inline void setbit(EBitCodes code, uint8_t* filed)
 {
-    rpl_wd_idientification_field[(code/8)] |= 1<<(code % 8);
+    filed[(code/8)] |= 1<<(code % 8);
 }
 
 static inline void clearbit(EBitCodes code, uint8_t* filed)
 {
-    rpl_wd_idientification_field[(code/8)] &= ~(1<<(code % 8));
+    filed[(code/8)] &= ~(1<<(code % 8));
 }
 
 static inline bool getbit(EBitCodes code, uint8_t* filed)
 {
-    return ((rpl_wd_idientification_field[(code/8)] & 1<<(code % 8)) != 0);
+    return ((filed[(code/8)] & 1<<(code % 8)) != 0);
 }
 
 static inline void setIdentificationBit(EBitCodes code)

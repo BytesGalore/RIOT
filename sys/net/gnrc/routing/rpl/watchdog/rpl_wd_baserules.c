@@ -88,14 +88,14 @@ int parse_dio(gnrc_rpl_dio_t* dio)
 int parse_dis(gnrc_rpl_dis_t* dis)
 {
     (void)dis;
-    setbit(eDISpkt);
+    setIdentificationBit(eDISpkt);
 
     if (ipv6_addr_is_multicast(current_pkt_dst)) {
         
         //dis->dodag_id
     }
     else {
-        setbit(eDISUnicast);
+        setIdentificationBit(eDISUnicast);
     }
     /*
     
@@ -126,14 +126,14 @@ int parse_dis(gnrc_rpl_dis_t* dis)
 int parse_dao(gnrc_rpl_dao_t* dao)
 {
     (void)dao;
-    setbit(eDAOpkt);
+    setIdentificationBit(eDAOpkt);
     return 0;
 }
 
 int parse_dao_ack(gnrc_rpl_dao_ack_t* dao_ack)
 {
     (void)dao_ack;
-    setbit(eDAOACKpkt);
+    setIdentificationBit(eDAOACKpkt);
     return 0;
 }
 
